@@ -266,6 +266,9 @@ var sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 /* ── DOCUMENT SECTIONS ──────────────────────────────────── */
 var DOC_SECTIONS = [
+  { key:'acceptance', label:'Job Acceptance', color:'#16a34a', items:[
+    { key:'signed_work_order', label:'Signed Work Order' }
+  ]},
   { key:'permits', label:'Permits', color:'#2563eb', items:[
     { key:'drilling_permit_app',  label:'Drilling Permit Application' },
     { key:'drilling_permit',      label:'Drilling Permit (Approved)' },
@@ -273,7 +276,7 @@ var DOC_SECTIONS = [
     { key:'electrical_permit',    label:'Electrical Permit' },
     { key:'mechanical_permit',    label:'Mechanical Permit' }
   ]},
-  { key:'driller_qa', label:'Driller QA', color:'#7c3aed', items:[
+  { key:'driller_qa', label:'Driller QA', color:'#7c3aed', optional:true, items:[
     { key:'drill_log',                    label:'Drill Log' },
     { key:'pre_grout_pressure',           label:'Pre-Grout Pressure Test' },
     { key:'post_grout_pressure',          label:'Post-Grout Pressure Test' },
@@ -681,7 +684,11 @@ function getJobProgress(jobId) {
   var job = leaseJobs.find(function(j){ return j.id===jobId; });
   if (!job) return { uploaded:0, total:0, isComplete:false, hasAny:false };
   var na = job.na_categories || {};
-  var required = ALL_CATS.filter(function(c){ return !na[c.key]; });
+  var required = [];
+  DOC_SECTIONS.forEach(function(s){
+    if (s.optional) return;
+    s.items.forEach(function(item){ if (!na[item.key]) required.push(item); });
+  });
   var uploadedKeys = new Set((jobUploads[jobId]||[]).map(function(u){ return u.category_key; }));
   var uploadedRequired = required.filter(function(c){ return uploadedKeys.has(c.key); });
   return {
@@ -694,12 +701,16 @@ function getJobProgress(jobId) {
 
 function getSectionProgress(jobId, section) {
   var job = leaseJobs.find(function(j){ return j.id===jobId; });
-  if (!job) return { uploaded:0, required:0, total:section.items.length };
+  if (!job) return { uploaded:0, required:0, total:section.items.length, optional:!!section.optional };
+  var uploadedKeys = new Set((jobUploads[jobId]||[]).map(function(u){ return u.category_key; }));
+  if (section.optional) {
+    var uploaded = section.items.filter(function(i){ return uploadedKeys.has(i.key); });
+    return { uploaded:uploaded.length, required:section.items.length, total:section.items.length, optional:true };
+  }
   var na = job.na_categories || {};
   var required = section.items.filter(function(i){ return !na[i.key]; });
-  var uploadedKeys = new Set((jobUploads[jobId]||[]).map(function(u){ return u.category_key; }));
-  var uploaded = required.filter(function(i){ return uploadedKeys.has(i.key); });
-  return { uploaded:uploaded.length, required:required.length, total:section.items.length };
+  var uploaded2 = required.filter(function(i){ return uploadedKeys.has(i.key); });
+  return { uploaded:uploaded2.length, required:required.length, total:section.items.length, optional:false };
 }
 
 function initials(n){ return n.split(' ').map(function(w){ return w[0]||''; }).join('').toUpperCase().slice(0,2); }
@@ -801,6 +812,7 @@ function renderCards() {
     // Meta fields
     html += '<div class="meta-section">';
     html += '<div class="meta-field"><span class="meta-label">CSG ID</span><input type="text" class="meta-input" placeholder="e.g. 51" value="'+(j.csg_id||'')+'" onchange="saveJobField(\''+j.id+'\',\'csg_id\',this.value)"></div>';
+    html += '<div class="meta-field"><span class="meta-label">Symphony AWL S/N</span><input type="text" class="meta-input" placeholder="WaterFurnace serial #" value="'+(j.awl_serial||'')+'" onchange="saveJobField(\''+j.id+'\',\'awl_serial\',this.value)"></div>';
     html += '<div class="meta-field" style="flex:2"><span class="meta-label">Notes</span><input type="text" class="meta-input" placeholder="Internal notes..." value="'+(j.notes||'').replace(/"/g,'&quot;')+'" onchange="saveJobField(\''+j.id+'\',\'notes\',this.value)"></div>';
     html += '</div>';
     // Download bar
@@ -845,12 +857,18 @@ function renderDocSection(job, section) {
   var jobId = job.id;
   var sp = getSectionProgress(jobId, section);
   var sectionOpen = openSections[jobId] && openSections[jobId].has(section.key);
-  var progClass = sp.required===0 ? 'sp-na' : sp.uploaded===sp.required ? 'sp-complete' : sp.uploaded>0 ? 'sp-partial' : 'sp-empty';
-  var progText = sp.uploaded+'/'+sp.required;
+  var progClass, progText;
+  if (sp.optional) {
+    progClass = 'sp-na';
+    progText = sp.uploaded+'/'+sp.required;
+  } else {
+    progClass = sp.required===0 ? 'sp-na' : sp.uploaded===sp.required ? 'sp-complete' : sp.uploaded>0 ? 'sp-partial' : 'sp-empty';
+    progText = sp.uploaded+'/'+sp.required;
+  }
   var html = '<div class="doc-section">';
   html += '<div class="ds-hdr" onclick="toggleSection(\''+jobId+'\',\''+section.key+'\')">'+
     '<div class="ds-dot" style="background:'+section.color+'"></div>'+
-    '<span class="ds-label">'+section.label+'</span>'+
+    '<span class="ds-label">'+section.label+(sp.optional?' <span style="font-size:9px;color:#aaa;font-weight:400">(Driller Submits)</span>':'')+'</span>'+
     '<span class="sp-badge '+progClass+'" style="margin-right:6px;border-left:2px solid '+section.color+'">'+progText+'</span>'+
     '<span class="ds-chevron '+(sectionOpen?'open':'')+'">&#9662;</span>'+
   '</div>';
@@ -1020,7 +1038,9 @@ function printChecklist() {
     html += '<div class="job-block">';
     html += '<div class="job-hdr">';
     html += '<div><div class="job-name">'+job.name+'</div>';
-    if (job.address) html += '<div class="job-addr">'+job.address+'</div></div>';
+    if (job.address) html += '<div class="job-addr">'+job.address+'</div>';
+    if (job.awl_serial) html += '<div class="job-addr">Symphony AWL S/N: <strong>'+job.awl_serial+'</strong></div>';
+    html += '</div>';
     html += '<div class="job-meta">';
     if (job.csg_id) html += 'CSG ID: '+job.csg_id+'<br>';
     html += '<span class="job-prog">'+(p.isComplete ? '&#10003; Complete' : p.uploaded+'/'+p.total+' docs uploaded')+'</span></div>';
@@ -1028,7 +1048,7 @@ function printChecklist() {
 
     DOC_SECTIONS.forEach(function(section){
       html += '<div class="section-block">';
-      html += '<div class="sec-hdr">'+section.label+'</div>';
+      html += '<div class="sec-hdr">'+section.label+(section.optional?' <span style="font-weight:400;color:#aaa;text-transform:none;letter-spacing:0">(Driller Submits — not required)</span>':'')+'</div>';
       section.items.forEach(function(item){
         var isNA = !!na[item.key];
         var files = (jobUploads[job.id]||[]).filter(function(u){ return u.category_key===item.key; });
