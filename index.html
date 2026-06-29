@@ -1,0 +1,977 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAzMiAzMiI+CiAgPHJlY3Qgd2lkdGg9IjMyIiBoZWlnaHQ9IjMyIiByeD0iNiIgZmlsbD0iIzFhM2E2YiIvPgogIDx0ZXh0IHg9IjE2IiB5PSIxMyIgZm9udC1mYW1pbHk9Ikdlb3JnaWEsc2VyaWYiIGZvbnQtc2l6ZT0iMTAiIGZvbnQtd2VpZ2h0PSJib2xkIiBmaWxsPSIjZmZmZmZmIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIj5OQTwvdGV4dD4KICA8dGV4dCB4PSIxNiIgeT0iMjMiIGZvbnQtZmFtaWx5PSJHZW9yZ2lhLHNlcmlmIiBmb250LXNpemU9IjYiIGZvbnQtd2VpZ2h0PSJib2xkIiBmaWxsPSIjMTZhMzRhIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIj5MRUFTRVM8L3RleHQ+CiAgPGxpbmUgeDE9IjQiIHkxPSIyNiIgeDI9IjI4IiB5Mj0iMjYiIHN0cm9rZT0iIzE2YTM0YSIgc3Ryb2tlLXdpZHRoPSIxLjUiLz4KPC9zdmc+">
+<title>NAGeo Lease Tracker</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f4f4f0;color:#1a1a1a;min-height:100vh;}
+#login-screen{display:flex;align-items:center;justify-content:center;min-height:100vh;background:#f4f4f0;}
+.login-card{background:#fff;border-radius:16px;border:0.5px solid #ddd;padding:2rem;width:340px;max-width:90vw;text-align:center;box-sizing:border-box;}
+.login-logo{font-size:22px;font-weight:600;margin-bottom:4px;}.login-logo span{color:#16a34a;}
+.login-sub{font-size:13px;color:#888;margin-bottom:2rem;}
+.pin-input{width:100%;padding:10px 14px;border:0.5px solid #ddd;border-radius:8px;font-size:16px;text-align:center;letter-spacing:6px;background:#f9f9f7;margin-bottom:1rem;box-sizing:border-box;}
+.pin-input:focus{outline:none;border-color:#16a34a;}
+.login-btn{width:100%;padding:11px;background:#16a34a;color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:500;cursor:pointer;}
+.login-btn:hover{background:#15803d;}
+.login-error{font-size:12px;color:#dc2626;margin-top:8px;}
+#app{display:none;}
+.topbar{background:#fff;border-bottom:0.5px solid #e5e5e5;padding:0 1.5rem;display:flex;align-items:center;gap:1rem;height:52px;position:sticky;top:0;z-index:100;}
+.topbar-logo{font-size:15px;font-weight:600;flex:1;}.topbar-logo span{color:#16a34a;}
+.topbar-user{font-size:12px;color:#888;}.topbar-user strong{color:#1a1a1a;}
+.logout-btn{font-size:12px;padding:4px 10px;border:0.5px solid #ddd;border-radius:6px;background:#fff;cursor:pointer;color:#888;}
+.sync-btn{font-size:12px;padding:5px 12px;border:0.5px solid #16a34a;border-radius:6px;background:#fff;cursor:pointer;color:#16a34a;}
+.settings-btn{font-size:18px;background:none;border:none;cursor:pointer;color:#888;padding:4px;}
+.main{max-width:1200px;margin:0 auto;padding:1.5rem;}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:1.5rem;}
+.stat{background:#fff;border-radius:10px;border:0.5px solid #e5e5e5;padding:12px 16px;}
+.stat-label{font-size:11px;color:#888;margin-bottom:4px;}.stat-value{font-size:24px;font-weight:600;color:#1a1a1a;}
+.view-toggle{display:flex;gap:6px;margin-bottom:1.25rem;}
+.vbtn{padding:6px 14px;font-size:13px;border-radius:8px;border:0.5px solid #ddd;background:#fff;color:#888;cursor:pointer;}
+.vbtn.active{background:#f4f4f0;color:#1a1a1a;font-weight:500;border-color:#bbb;}
+/* Overview table */
+.overview-wrap{overflow-x:auto;background:#fff;border-radius:12px;border:0.5px solid #e5e5e5;}
+table{width:100%;border-collapse:collapse;font-size:12px;}
+thead tr{border-bottom:0.5px solid #e5e5e5;}
+th{padding:9px 10px;text-align:left;color:#888;font-weight:400;white-space:nowrap;}
+td{padding:8px 10px;border-bottom:0.5px solid #f0f0f0;vertical-align:middle;}
+tr:last-child td{border-bottom:none;}
+.ov-name{font-weight:500;font-size:13px;color:#1a1a1a;}
+.ov-addr{font-size:11px;color:#888;margin-top:1px;}
+.ov-csg{font-size:10px;color:#2563eb;margin-top:1px;}
+.sp-badge{display:inline-block;padding:2px 6px;border-radius:4px;font-size:10px;font-weight:600;}
+.sp-complete{background:#dcfce7;color:#16a34a;}
+.sp-partial{background:#fef9c3;color:#ca8a04;}
+.sp-empty{background:#fee2e2;color:#dc2626;}
+.sp-na{background:#f4f4f0;color:#888;}
+/* Cards */
+.installs{display:flex;flex-direction:column;gap:10px;}
+.card{background:#fff;border:0.5px solid #e5e5e5;border-radius:14px;overflow:hidden;transition:border-color 0.15s;}
+.card.drag-over{border:1.5px solid #16a34a;background:#f0fdf4;}.card.dragging{opacity:0.4;}
+.card-header{display:flex;align-items:center;gap:12px;padding:14px 16px;cursor:pointer;}
+.card-header:hover{background:#fafaf8;}
+.drag-handle{cursor:grab;color:#ccc;font-size:18px;padding:0 2px;flex-shrink:0;user-select:none;}
+.drag-handle:hover{color:#888;}
+.avatar{width:38px;height:38px;border-radius:50%;background:#dcfce7;color:#16a34a;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:600;flex-shrink:0;}
+.card-meta{flex:1;min-width:0;}
+.card-name{font-size:14px;font-weight:600;color:#1a1a1a;}
+.card-addr{font-size:12px;color:#888;margin-top:1px;}
+.card-csg{font-size:11px;color:#2563eb;margin-top:2px;}
+.card-pills{display:flex;gap:6px;align-items:center;flex-shrink:0;}
+.pill{font-size:11px;padding:3px 9px;border-radius:6px;}
+.pill-prog{background:#f4f4f0;color:#555;}
+.pill-done{background:#dcfce7;color:#16a34a;}
+.pill-missing{background:#fee2e2;color:#dc2626;}
+.chevron{font-size:14px;color:#bbb;transition:transform 0.2s;flex-shrink:0;}.chevron.open{transform:rotate(180deg);}
+.card-body{display:none;border-top:0.5px solid #f0f0f0;}.card-body.open{display:block;}
+/* Meta fields */
+.meta-section{padding:12px 16px;border-bottom:0.5px solid #f0f0f0;display:flex;gap:16px;flex-wrap:wrap;}
+.meta-field{display:flex;align-items:center;gap:8px;flex:1;min-width:160px;}
+.meta-label{font-size:11px;color:#888;white-space:nowrap;flex-shrink:0;}
+.meta-input{flex:1;font-size:13px;padding:5px 8px;border:0.5px solid #ddd;border-radius:6px;background:#f9f9f7;color:#1a1a1a;font-family:inherit;}
+.meta-input:focus{outline:none;border-color:#16a34a;}
+/* Download bar */
+.download-bar{padding:10px 16px;border-bottom:0.5px solid #f0f0f0;display:flex;align-items:center;gap:10px;}
+.dl-btn{font-size:12px;padding:6px 14px;border:0.5px solid #16a34a;border-radius:8px;background:#fff;color:#16a34a;cursor:pointer;font-family:inherit;font-weight:500;}
+.dl-btn:hover{background:#f0fdf4;}
+.dl-hint{font-size:11px;color:#aaa;}
+/* Document sections */
+.doc-sections{padding:8px 16px 12px;}
+.doc-section{border:0.5px solid #e5e5e5;border-radius:10px;overflow:hidden;margin-bottom:7px;}
+.doc-section:last-child{margin-bottom:0;}
+.ds-hdr{display:flex;align-items:center;gap:10px;padding:9px 12px;cursor:pointer;background:#fff;}
+.ds-hdr:hover{background:#fafaf8;}
+.ds-dot{width:9px;height:9px;border-radius:50%;flex-shrink:0;}
+.ds-label{font-size:13px;font-weight:500;flex:1;color:#1a1a1a;}
+.ds-prog{font-size:11px;color:#888;}
+.ds-chevron{font-size:11px;color:#bbb;transition:transform 0.2s;flex-shrink:0;}.ds-chevron.open{transform:rotate(180deg);}
+.ds-body{display:none;border-top:0.5px solid #f0f0f0;}.ds-body.open{display:block;}
+/* Document items */
+.doc-item{padding:8px 12px;border-bottom:0.5px solid #f8f8f8;}
+.doc-item:last-child{border-bottom:none;}
+.doc-item-row{display:flex;align-items:center;gap:8px;}
+.doc-status{width:20px;height:20px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;flex-shrink:0;}
+.ds-uploaded{background:#dcfce7;color:#16a34a;}
+.ds-missing{background:#fee2e2;color:#dc2626;}
+.ds-na{background:#f4f4f0;color:#888;font-size:8px;font-weight:700;}
+.doc-lbl{flex:1;font-size:12px;color:#1a1a1a;}
+.doc-lbl.na-lbl{color:#bbb;text-decoration:line-through;}
+.doc-act{display:flex;gap:4px;flex-shrink:0;}
+.up-btn{font-size:11px;padding:3px 8px;border:0.5px solid #2563eb;border-radius:5px;background:#fff;color:#2563eb;cursor:pointer;font-family:inherit;}
+.up-btn:hover{background:#eff6ff;}
+.na-btn{font-size:11px;padding:3px 8px;border:0.5px solid #ddd;border-radius:5px;background:#fff;color:#888;cursor:pointer;font-family:inherit;}
+.na-btn:hover{background:#f4f4f0;}
+.na-btn.na-active{background:#f4f4f0;border-color:#bbb;color:#555;}
+/* File list */
+.doc-files{padding:5px 0 6px 38px;display:flex;flex-direction:column;gap:3px;}
+.file-row{display:flex;align-items:center;gap:8px;}
+.file-link{font-size:11px;color:#2563eb;text-decoration:none;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer;}
+.file-link:hover{text-decoration:underline;}
+.file-sz{font-size:10px;color:#bbb;white-space:nowrap;flex-shrink:0;}
+.file-del{font-size:13px;background:none;border:none;color:#dc2626;cursor:pointer;padding:0 3px;flex-shrink:0;opacity:0.6;}
+.file-del:hover{opacity:1;}
+.file-who{font-size:10px;color:#ccc;white-space:nowrap;flex-shrink:0;}
+/* HCP Notes */
+.hcp-section{padding:12px 16px;border-top:0.5px solid #f0f0f0;}
+.hcp-hdr{display:flex;justify-content:space-between;align-items:center;cursor:pointer;}
+.hcp-title{font-size:12px;color:#888;}
+.hcp-body{margin-top:8px;display:none;}.hcp-body.open{display:block;}
+.note-item{padding:7px 10px;border:0.5px solid #e5e5e5;border-radius:8px;margin-bottom:5px;font-size:12px;color:#555;line-height:1.5;}
+/* Delete zone */
+.delete-zone{padding:10px 16px;border-top:0.5px solid #f0f0f0;display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
+.delete-btn{font-size:12px;padding:5px 12px;border:0.5px solid #fca5a5;border-radius:8px;background:#fff;color:#dc2626;cursor:pointer;font-family:inherit;}
+.delete-btn:hover{background:#fee2e2;}
+.delete-confirm-area{display:none;align-items:center;gap:8px;flex-wrap:wrap;}
+.delete-confirm-area.show{display:flex;}
+.delete-hint{font-size:11px;color:#dc2626;}
+.delete-type-input{font-size:12px;padding:4px 8px;border:0.5px solid #fca5a5;border-radius:6px;font-family:inherit;width:90px;}
+.delete-go-btn{font-size:12px;padding:5px 12px;border:none;border-radius:8px;background:#dc2626;color:#fff;cursor:pointer;font-family:inherit;}
+.delete-cancel-btn{font-size:12px;padding:5px 12px;border:0.5px solid #ddd;border-radius:8px;background:#fff;color:#888;cursor:pointer;font-family:inherit;}
+/* Activity log */
+.log-title{font-size:14px;font-weight:500;color:#1a1a1a;margin-bottom:10px;}
+.log-list{background:#fff;border-radius:12px;border:0.5px solid #e5e5e5;overflow:hidden;}
+.log-item{padding:10px 16px;border-bottom:0.5px solid #f0f0f0;display:flex;gap:10px;align-items:flex-start;}
+.log-item:last-child{border-bottom:none;}
+.log-who{font-size:12px;font-weight:500;color:#1a1a1a;white-space:nowrap;}
+.log-what{flex:1;font-size:12px;color:#555;}
+.log-when{font-size:11px;color:#aaa;white-space:nowrap;}
+.load-more-btn{margin-top:10px;width:100%;padding:10px;background:#fff;border:0.5px solid #ddd;border-radius:10px;font-size:13px;color:#888;cursor:pointer;font-family:inherit;}
+.load-more-btn:hover{background:#f4f4f0;}
+/* Modals */
+.modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:200;align-items:center;justify-content:center;}
+.modal-bg.open{display:flex;}
+.modal{background:#fff;border-radius:14px;padding:1.5rem;width:420px;max-width:95vw;}
+.modal-title{font-size:16px;font-weight:600;margin-bottom:1.25rem;}
+.modal-row{margin-bottom:1rem;}
+.modal-label{font-size:12px;color:#888;margin-bottom:4px;}
+.modal-input{width:100%;padding:8px 12px;border:0.5px solid #ddd;border-radius:8px;font-size:13px;font-family:inherit;background:#f9f9f7;color:#1a1a1a;}
+.modal-input:focus{outline:none;border-color:#16a34a;}
+.modal-btns{display:flex;justify-content:flex-end;gap:8px;margin-top:1.25rem;}
+.modal-cancel{padding:8px 16px;border:0.5px solid #ddd;border-radius:8px;background:#fff;cursor:pointer;font-size:13px;font-family:inherit;color:#888;}
+.modal-save{padding:8px 16px;border:none;border-radius:8px;background:#16a34a;color:#fff;cursor:pointer;font-size:13px;font-family:inherit;font-weight:500;}
+.add-btn{margin-top:1rem;width:100%;padding:11px;background:#fff;border:0.5px dashed #ccc;border-radius:12px;color:#888;cursor:pointer;font-size:13px;font-family:inherit;}
+.add-btn:hover{background:#f4f4f0;color:#1a1a1a;}
+/* Toast */
+.toast{position:fixed;bottom:1.5rem;right:1.5rem;background:#1a1a1a;color:#fff;padding:10px 16px;border-radius:10px;font-size:13px;z-index:300;opacity:0;transition:opacity 0.3s;pointer-events:none;}
+.toast.show{opacity:1;}
+/* Upload overlay */
+.uploading-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:400;display:none;align-items:center;justify-content:center;}
+.uploading-overlay.show{display:flex;}
+.uploading-box{background:#fff;border-radius:14px;padding:1.5rem 2rem;text-align:center;font-size:14px;color:#1a1a1a;}
+.uploading-spinner{font-size:24px;margin-bottom:8px;animation:spin 1s linear infinite;display:block;}
+@keyframes spin{from{transform:rotate(0deg);}to{transform:rotate(360deg);}}
+.empty{padding:2rem;text-align:center;color:#aaa;font-size:13px;}
+/* Responsive */
+@media(max-width:600px){
+  .topbar{flex-wrap:wrap;height:auto;padding:8px 12px;gap:6px;}
+  .topbar-logo{font-size:14px;width:100%;}
+  .main{padding:1rem 0.75rem;}
+  .stats{grid-template-columns:1fr 1fr;gap:8px;}
+  .stat-value{font-size:20px;}
+  .meta-section{flex-direction:column;gap:8px;}
+  .doc-act{gap:3px;}
+  .up-btn,.na-btn{font-size:10px;padding:2px 6px;}
+  th:nth-child(n+3){display:none;}
+}
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="login-screen">
+  <div class="login-card">
+    <div class="login-logo">NAGeo <span>Lease Tracker</span></div>
+    <div class="login-sub">North American GeoThermal &mdash; Lease Document Management</div>
+    <input type="password" class="pin-input" id="pin-input" placeholder="Enter your PIN" maxlength="6" inputmode="numeric">
+    <button class="login-btn" onclick="doLogin()">Sign in</button>
+    <div class="login-error" id="login-error"></div>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="app">
+  <div class="topbar">
+    <div class="topbar-logo">NAGeo <span>Lease Tracker</span></div>
+    <button class="sync-btn" onclick="syncHCP()">&#8635; Sync HCP</button>
+    <button class="settings-btn" onclick="openSettings()" title="Settings">&#9881;</button>
+    <div class="topbar-user">Signed in as <strong id="topbar-name"></strong></div>
+    <button class="logout-btn" onclick="doLogout()">Sign out</button>
+  </div>
+  <div class="main">
+    <div class="stats">
+      <div class="stat"><div class="stat-label">Total jobs</div><div class="stat-value" id="s-total">0</div></div>
+      <div class="stat"><div class="stat-label">All docs complete</div><div class="stat-value" id="s-complete" style="color:#16a34a">0</div></div>
+      <div class="stat"><div class="stat-label">In progress</div><div class="stat-value" id="s-inprog" style="color:#ca8a04">0</div></div>
+      <div class="stat"><div class="stat-label">Not started</div><div class="stat-value" id="s-none" style="color:#dc2626">0</div></div>
+    </div>
+    <div class="view-toggle">
+      <button class="vbtn active" id="btn-overview" onclick="setView('overview')">&#9776; Overview</button>
+      <button class="vbtn" id="btn-cards" onclick="setView('cards')">&#128196; Jobs</button>
+      <button class="vbtn" id="btn-log" onclick="setView('log')">&#128203; Activity log</button>
+    </div>
+    <div id="view-overview"></div>
+    <div id="view-cards" style="display:none"></div>
+    <div id="view-log" style="display:none"></div>
+    <button class="add-btn" id="add-job-btn" onclick="addJob()">+ Add lease job</button>
+  </div>
+</div>
+
+<!-- Hidden file input -->
+<input type="file" id="file-input" style="display:none" multiple accept="*/*">
+
+<!-- Settings modal -->
+<div class="modal-bg" id="settings-modal">
+  <div class="modal">
+    <div class="modal-title">Settings</div>
+    <div class="modal-row">
+      <div class="modal-label">HCP Customer Tag (for lease jobs)</div>
+      <input type="text" class="modal-input" id="hcp-tag-input" placeholder="e.g. Lease">
+    </div>
+    <div class="modal-btns">
+      <button class="modal-cancel" onclick="closeSettings()">Cancel</button>
+      <button class="modal-save" onclick="saveSettings()">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- Address picker modal -->
+<div class="modal-bg" id="addr-picker-modal">
+  <div class="modal">
+    <div class="modal-title">Choose install address</div>
+    <div id="addr-picker-body"></div>
+  </div>
+</div>
+
+<!-- Upload overlay -->
+<div class="uploading-overlay" id="uploading-overlay">
+  <div class="uploading-box">
+    <span class="uploading-spinner">&#9696;</span>
+    <div id="uploading-msg">Uploading...</div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* ── CONFIG ─────────────────────────────────────────────── */
+var SUPABASE_URL = 'https://hpgwwegjsxyxovdattoc.supabase.co';
+var SUPABASE_KEY = 'sb_publishable_D2PqYQoJjZ8koEM9NPvmeg_KB_Wa66H';
+var BUCKET = 'lease-docs';
+var sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+/* ── DOCUMENT SECTIONS ──────────────────────────────────── */
+var DOC_SECTIONS = [
+  { key:'permits', label:'Permits', color:'#2563eb', items:[
+    { key:'drilling_permit_app',  label:'Drilling Permit Application' },
+    { key:'drilling_permit',      label:'Drilling Permit (Approved)' },
+    { key:'building_permit',      label:'Building Permit' },
+    { key:'electrical_permit',    label:'Electrical Permit' },
+    { key:'mechanical_permit',    label:'Mechanical Permit' }
+  ]},
+  { key:'driller_qa', label:'Driller QA', color:'#7c3aed', items:[
+    { key:'drill_log',                    label:'Drill Log' },
+    { key:'pre_grout_pressure',           label:'Pre-Grout Pressure Test' },
+    { key:'post_grout_pressure',          label:'Post-Grout Pressure Test' },
+    { key:'loop_mfr_warranties',          label:'Loop Manufacturer Warranties' },
+    { key:'driller_workmanship_warranty', label:'Driller Workmanship Warranty' },
+    { key:'drilling_invoice',             label:'Drilling Invoice' }
+  ]},
+  { key:'hvac_qa', label:'HVAC QA', color:'#0891b2', items:[
+    { key:'hp_nameplate_photo',  label:'Heat Pump Nameplate Photo' },
+    { key:'hp_install_photos',   label:'Heat Pump Installation Photos' },
+    { key:'commissioning_report',label:'QA Commissioning Report' },
+    { key:'hvac_qa_package',     label:'HVAC Standard QA Package' },
+    { key:'final_inspection',    label:'Final Inspection Report' },
+    { key:'cert_occupancy',      label:'Certificate of Occupancy' }
+  ]},
+  { key:'post_commission', label:'Post-Commissioning', color:'#059669', items:[
+    { key:'as_built_drawings',       label:'As-Built Drawings' },
+    { key:'antifreeze_sds',          label:'Antifreeze SDS' },
+    { key:'pressure_flush_logs',     label:'Pressure Test & Flush Logs' },
+    { key:'electrical_panel_photos', label:'Electrical Panel Photos' },
+    { key:'site_restoration_photos', label:'Site Restoration Photos' }
+  ]},
+  { key:'warranties', label:'Warranties', color:'#d97706', items:[
+    { key:'hvac_mfr_warranties',         label:'HVAC Manufacturer Warranties' },
+    { key:'hvac_workmanship_warranty',   label:'HVAC Workmanship Warranty' }
+  ]},
+  { key:'invoices', label:'Invoices', color:'#dc2626', items:[
+    { key:'hvac_equipment_invoice',    label:'HVAC Equipment Invoice' },
+    { key:'hvac_installation_invoice', label:'HVAC Installation Invoice' }
+  ]},
+  { key:'other', label:'Other', color:'#64748b', items:[
+    { key:'utility_bill', label:'Utility Bill' }
+  ]}
+];
+
+var ALL_CATS = DOC_SECTIONS.flatMap(function(s){ return s.items; });
+
+/* ── STATE ──────────────────────────────────────────────── */
+var currentUser = null, users = [], leaseJobs = [], jobUploads = {}, activityLog = [], appSettings = {};
+var openCards = new Set(), openSections = {}, openNotes = new Set(), showDel = new Set();
+var currentView = 'overview', pendingUpload = null, pendingHCPCustomers = [];
+var logOffset = 0, LOG_BATCH = 100, logTotal = 0, dragId = null, dragOverId = null;
+
+/* ── INIT ───────────────────────────────────────────────── */
+async function init() {
+  var saved = localStorage.getItem('nageo_lease_user');
+  if (saved) { currentUser = JSON.parse(saved); showApp(); }
+  else { await loadUsers(); showLogin(); }
+}
+
+async function loadUsers() {
+  var r = await sb.from('users').select('*').order('name');
+  users = r.data || [];
+}
+
+function showLogin() {
+  document.getElementById('login-screen').style.display = 'flex';
+  document.getElementById('app').style.display = 'none';
+}
+
+async function doLogin() {
+  var pin = document.getElementById('pin-input').value.trim();
+  if (!pin) { document.getElementById('login-error').textContent = 'Please enter your PIN.'; return; }
+  var user = users.find(function(u){ return u.pin === pin; });
+  if (!user) {
+    document.getElementById('login-error').textContent = 'PIN not recognized. Try again.';
+    document.getElementById('pin-input').value = ''; return;
+  }
+  currentUser = user;
+  localStorage.setItem('nageo_lease_user', JSON.stringify(user));
+  showApp();
+}
+
+document.addEventListener('keydown', function(e){
+  if (e.key==='Enter' && document.getElementById('login-screen').style.display!=='none') doLogin();
+});
+document.getElementById('pin-input').addEventListener('input', function(){
+  if (this.value.length >= 4) {
+    var user = users.find(function(u){ return u.pin === this.value; }, this);
+    if (user) doLogin();
+  }
+});
+
+function doLogout() {
+  currentUser = null;
+  localStorage.removeItem('nageo_lease_user');
+  document.getElementById('app').style.display = 'none';
+  document.getElementById('login-screen').style.display = 'flex';
+  document.getElementById('pin-input').value = '';
+}
+
+async function showApp() {
+  document.getElementById('login-screen').style.display = 'none';
+  document.getElementById('app').style.display = 'block';
+  document.getElementById('topbar-name').textContent = currentUser.name;
+  await loadSettings();
+  await loadAll();
+  startRealtime();
+}
+
+/* ── DATA LOADING ───────────────────────────────────────── */
+async function loadAll() {
+  var r1 = await sb.from('lease_jobs').select('*').order('sort_order',{ascending:true}).order('created_at',{ascending:false});
+  var r2 = await sb.from('lease_doc_uploads').select('*').order('uploaded_at',{ascending:false});
+  var r3 = await sb.from('lease_activity_log').select('*',{count:'exact'}).order('created_at',{ascending:false}).range(0, LOG_BATCH - 1);
+  leaseJobs = r1.data || [];
+  var allUploads = r2.data || [];
+  activityLog = r3.data || [];
+  logTotal = r3.count || 0;
+  logOffset = activityLog.length;
+  jobUploads = {};
+  leaseJobs.forEach(function(j){ jobUploads[j.id] = []; });
+  allUploads.forEach(function(u){
+    if (!jobUploads[u.job_id]) jobUploads[u.job_id] = [];
+    jobUploads[u.job_id].push(u);
+  });
+  render();
+}
+
+async function loadMoreLog() {
+  var r = await sb.from('lease_activity_log').select('*').order('created_at',{ascending:false}).range(logOffset, logOffset + LOG_BATCH - 1);
+  var more = r.data || [];
+  activityLog = activityLog.concat(more);
+  logOffset += more.length;
+  renderLog();
+}
+
+/* ── SETTINGS ───────────────────────────────────────────── */
+async function loadSettings() {
+  var r = await sb.from('settings').select('*');
+  if (r.data) r.data.forEach(function(row){ appSettings[row.key] = row.value; });
+  var local = JSON.parse(localStorage.getItem('nageo_lease_settings')||'{}');
+  if (local.hcpTag && !appSettings.hcpTag) appSettings.hcpTag = local.hcpTag;
+}
+function openSettings() {
+  document.getElementById('hcp-tag-input').value = appSettings.hcpTag || 'Lease';
+  document.getElementById('settings-modal').classList.add('open');
+}
+function closeSettings(){ document.getElementById('settings-modal').classList.remove('open'); }
+async function saveSettings() {
+  var tag = document.getElementById('hcp-tag-input').value.trim() || 'Lease';
+  appSettings.hcpTag = tag;
+  localStorage.setItem('nageo_lease_settings', JSON.stringify({hcpTag:tag}));
+  closeSettings(); showToast('Settings saved.');
+}
+
+/* ── HCP SYNC ───────────────────────────────────────────── */
+async function syncHCP() {
+  showToast('Syncing from Housecall Pro...');
+  try {
+    var res = await fetch(SUPABASE_URL+'/functions/v1/swift-api', {
+      method:'POST',
+      headers:{'Content-Type':'application/json','Authorization':'Bearer '+SUPABASE_KEY,'apikey':SUPABASE_KEY},
+      body:JSON.stringify({tag: appSettings.hcpTag || 'Lease'})
+    });
+    if (!res.ok) { showToast('HCP sync failed.'); return; }
+    var data = await res.json();
+    var customers = data.customers || [];
+    if (!customers.length) { showToast('No customers found with tag "' + (appSettings.hcpTag||'Lease') + '".'); return; }
+    var toImport = [], updated = 0;
+    for (var i=0;i<customers.length;i++) {
+      var c = customers[i];
+      var hcpId = 'cust-'+c.id;
+      var existing = leaseJobs.find(function(j){ return j.hcp_job_id === hcpId; });
+      if (existing) {
+        var freshNotes = c.all_notes || (c.notes&&c.notes.trim()?[{id:'note-0',text:c.notes.trim()}]:[]);
+        if (JSON.stringify(freshNotes) !== JSON.stringify(existing.hcp_notes||[])) {
+          existing.hcp_notes = freshNotes;
+          await sb.from('lease_jobs').update({hcp_notes:freshNotes,updated_at:new Date().toISOString()}).eq('id',existing.id);
+          updated++;
+        }
+      } else { toImport.push(c); }
+    }
+    if (!toImport.length && !updated) { showToast('Everything up to date.'); render(); return; }
+    if (!toImport.length) { showToast('Updated notes on '+updated+' job(s).'); render(); return; }
+    var needsPicker = toImport.filter(function(c){ return c.addresses&&c.addresses.length>1; });
+    var noPicker   = toImport.filter(function(c){ return !c.addresses||c.addresses.length<=1; });
+    var maxOrder = leaseJobs.reduce(function(m,j){ return Math.max(m,j.sort_order||0); },0);
+    var added = 0;
+    for (var j2=0;j2<noPicker.length;j2++) {
+      var c2 = noPicker[j2];
+      added += await importCustomer(c2, c2.addresses&&c2.addresses.length?c2.addresses[0]:null, maxOrder+added+1);
+    }
+    if (needsPicker.length) { pendingHCPCustomers = needsPicker; showAddressPicker(); }
+    else { showToast('Synced '+added+' new job(s) from HCP.'); render(); }
+  } catch(e) { showToast('HCP sync error.'); console.error(e); }
+}
+
+async function importCustomer(c, addr, sortOrder) {
+  var hcpId = 'cust-'+c.id;
+  var fullName = ((c.first_name||'')+' '+(c.last_name||'')).trim() || 'Unknown';
+  var addrStr = addr ? [addr.street,addr.street_line_2,addr.city,addr.state,addr.zip].filter(Boolean).join(', ') : '';
+  var hcpNotes = c.all_notes || (c.notes&&c.notes.trim()?[{id:'note-0',text:c.notes.trim()}]:[]);
+  var r = await sb.from('lease_jobs').insert({hcp_job_id:hcpId,name:fullName,address:addrStr,hcp_notes:hcpNotes,na_categories:{},sort_order:sortOrder,updated_at:new Date().toISOString()}).select().single();
+  if (r.data) {
+    r.data.hcp_notes = hcpNotes;
+    r.data.na_categories = {};
+    leaseJobs.push(r.data);
+    jobUploads[r.data.id] = [];
+    await logActivity(r.data.id, 'Imported from HCP: '+fullName);
+    return 1;
+  }
+  return 0;
+}
+
+function showAddressPicker() {
+  var c = pendingHCPCustomers[0];
+  var fullName = ((c.first_name||'')+' '+(c.last_name||'')).trim();
+  var html = '<p style="font-size:13px;color:#555;margin-bottom:1rem;">Which address for <strong>'+fullName+'</strong>?</p><div style="display:flex;flex-direction:column;gap:8px;">';
+  c.addresses.forEach(function(a,i){
+    var addr = [a.street,a.street_line_2,a.city,a.state,a.zip].filter(Boolean).join(', ');
+    html += '<button onclick="selectAddress('+i+')" style="padding:10px 14px;border:0.5px solid #ddd;border-radius:8px;background:#fff;cursor:pointer;text-align:left;font-family:inherit;font-size:13px;"><span style="font-size:10px;color:#888;text-transform:uppercase;letter-spacing:.5px">'+a.type+'</span><br>'+addr+'</button>';
+  });
+  html += '</div>';
+  document.getElementById('addr-picker-body').innerHTML = html;
+  document.getElementById('addr-picker-modal').classList.add('open');
+}
+
+async function selectAddress(addrIdx) {
+  var c = pendingHCPCustomers.shift();
+  var maxOrder = leaseJobs.reduce(function(m,j){ return Math.max(m,j.sort_order||0); },0);
+  await importCustomer(c, c.addresses[addrIdx], maxOrder+1);
+  document.getElementById('addr-picker-modal').classList.remove('open');
+  if (pendingHCPCustomers.length) showAddressPicker();
+  else { showToast('HCP sync complete.'); render(); }
+}
+
+/* ── JOB CRUD ───────────────────────────────────────────── */
+async function addJob() {
+  var name = prompt('Customer full name:');
+  if (!name) return;
+  var address = prompt('Job address:');
+  var maxOrder = leaseJobs.reduce(function(m,j){ return Math.max(m,j.sort_order||0); },0);
+  var r = await sb.from('lease_jobs').insert({name:name,address:address||'',csg_id:'',notes:'',hcp_notes:[],na_categories:{},sort_order:maxOrder+1,updated_at:new Date().toISOString()}).select().single();
+  if (r.data) {
+    r.data.hcp_notes = []; r.data.na_categories = {};
+    leaseJobs.unshift(r.data);
+    jobUploads[r.data.id] = [];
+    openCards.add(r.data.id);
+    await logActivity(r.data.id, 'Job created');
+    setView('cards'); render();
+  }
+}
+
+async function saveJobField(jobId, field, value) {
+  await sb.from('lease_jobs').update({[field]:value,updated_at:new Date().toISOString()}).eq('id',jobId);
+  var job = leaseJobs.find(function(j){ return j.id===jobId; });
+  if (job) job[field] = value;
+  await logActivity(jobId, 'Updated '+field+(value?': '+value:''));
+}
+
+async function deleteJob(jobId) {
+  var job = leaseJobs.find(function(j){ return j.id===jobId; });
+  // Delete all storage files for this job
+  var uploads = jobUploads[jobId] || [];
+  if (uploads.length) {
+    var paths = uploads.map(function(u){ return u.storage_path; });
+    await sb.storage.from(BUCKET).remove(paths);
+  }
+  await sb.from('lease_doc_uploads').delete().eq('job_id',jobId);
+  await sb.from('lease_activity_log').delete().eq('job_id',jobId);
+  await sb.from('lease_jobs').delete().eq('id',jobId);
+  leaseJobs = leaseJobs.filter(function(j){ return j.id!==jobId; });
+  delete jobUploads[jobId];
+  openCards.delete(jobId); showDel.delete(jobId);
+  showToast((job?job.name:'Job')+' deleted.');
+  render();
+}
+
+function showDeleteConfirm(id){ showDel.add(id); render(); }
+function cancelDelete(id){ showDel.delete(id); render(); }
+function confirmDelete(id){
+  var val = document.getElementById('del-input-'+id);
+  if (!val || val.value.trim() !== 'DELETE') { showToast('Type DELETE in all caps to confirm.'); return; }
+  deleteJob(id);
+}
+
+/* ── FILE UPLOADS ───────────────────────────────────────── */
+function triggerUpload(jobId, catKey) {
+  pendingUpload = { jobId:jobId, catKey:catKey };
+  var inp = document.getElementById('file-input');
+  inp.value = '';
+  inp.click();
+}
+
+document.getElementById('file-input').addEventListener('change', async function(){
+  if (!pendingUpload) return;
+  var jobId = pendingUpload.jobId, catKey = pendingUpload.catKey;
+  pendingUpload = null;
+  var files = Array.from(this.files);
+  if (!files.length) return;
+  showUploading('Uploading ' + files.length + ' file'+(files.length>1?'s':'')+'...');
+  for (var i=0; i<files.length; i++) {
+    await uploadFile(jobId, catKey, files[i], i+1, files.length);
+  }
+  hideUploading();
+  render();
+  showToast(files.length + ' file'+(files.length>1?'s':'')+' uploaded.');
+});
+
+async function uploadFile(jobId, catKey, file, idx, total) {
+  var ts = Date.now();
+  var safeName = file.name.replace(/[^a-zA-Z0-9._\-]/g,'_');
+  var storagePath = jobId+'/'+catKey+'/'+ts+'_'+safeName;
+  setUploadingMsg('Uploading ' + (idx||'') + (total?'/'+total:'') + ': ' + file.name);
+  var { error:upErr } = await sb.storage.from(BUCKET).upload(storagePath, file, {cacheControl:'3600',upsert:false});
+  if (upErr) { showToast('Upload failed: '+upErr.message); return; }
+  var { data:record, error:dbErr } = await sb.from('lease_doc_uploads').insert({
+    job_id:jobId, category_key:catKey,
+    file_name:file.name, storage_path:storagePath,
+    file_size:file.size, mime_type:file.type,
+    uploaded_by:currentUser.id, uploaded_by_name:currentUser.name,
+    uploaded_at:new Date().toISOString()
+  }).select().single();
+  if (dbErr) { showToast('DB error: '+dbErr.message); return; }
+  if (!jobUploads[jobId]) jobUploads[jobId] = [];
+  jobUploads[jobId].push(record);
+  await sb.from('lease_jobs').update({updated_at:new Date().toISOString()}).eq('id',jobId);
+  await logActivity(jobId, 'Uploaded "'+file.name+'" → '+getCatLabel(catKey));
+}
+
+async function deleteFile(uploadId, storagePath, jobId, catKey) {
+  if (!confirm('Delete this file? This cannot be undone.')) return;
+  await sb.storage.from(BUCKET).remove([storagePath]);
+  await sb.from('lease_doc_uploads').delete().eq('id',uploadId);
+  jobUploads[jobId] = (jobUploads[jobId]||[]).filter(function(u){ return u.id!==uploadId; });
+  await logActivity(jobId, 'Deleted file from "'+getCatLabel(catKey)+'"');
+  render(); showToast('File deleted.');
+}
+
+function getFileUrl(storagePath) {
+  var r = sb.storage.from(BUCKET).getPublicUrl(storagePath);
+  return r.data.publicUrl;
+}
+
+/* ── DOWNLOAD ALL ───────────────────────────────────────── */
+async function downloadAllDocs(jobId) {
+  var job = leaseJobs.find(function(j){ return j.id===jobId; });
+  var uploads = (jobUploads[jobId]||[]).filter(function(u){ return u.storage_path; });
+  if (!uploads.length) { showToast('No documents uploaded yet.'); return; }
+  showUploading('Preparing download... (0/'+uploads.length+')');
+  var zip = new JSZip();
+  var nameCounts = {};
+  var failed = 0;
+  for (var i=0; i<uploads.length; i++) {
+    var u = uploads[i];
+    setUploadingMsg('Downloading '+(i+1)+'/'+uploads.length+': '+u.file_name);
+    var catLabel = getCatLabel(u.category_key);
+    var ext = u.file_name.includes('.') ? u.file_name.substring(u.file_name.lastIndexOf('.')) : '';
+    var baseName = job.name+' - '+catLabel;
+    if (!nameCounts[baseName]) nameCounts[baseName] = 0;
+    nameCounts[baseName]++;
+    var count = nameCounts[baseName];
+    var zipName = baseName + (count > 1 ? ' ('+count+')' : '') + ext;
+    try {
+      var url = getFileUrl(u.storage_path);
+      var resp = await fetch(url);
+      if (!resp.ok) throw new Error('HTTP '+resp.status);
+      var blob = await resp.blob();
+      zip.file(zipName, blob);
+    } catch(e) { failed++; console.error('Failed to fetch', u.file_name, e); }
+  }
+  setUploadingMsg('Creating zip...');
+  var content = await zip.generateAsync({type:'blob'});
+  var blobUrl = URL.createObjectURL(content);
+  var a = document.createElement('a');
+  a.href = blobUrl;
+  a.download = job.name+' - Lease Documents.zip';
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  setTimeout(function(){ URL.revokeObjectURL(blobUrl); }, 1000);
+  hideUploading();
+  var msg = 'Downloaded '+(uploads.length-failed)+' file'+(uploads.length-failed!==1?'s':'');
+  if (failed) msg += ' ('+failed+' failed)';
+  showToast(msg+'.');
+  await logActivity(jobId, 'Downloaded all documents ('+uploads.length+' files)');
+}
+
+/* ── N/A TOGGLE ─────────────────────────────────────────── */
+async function toggleNA(jobId, catKey) {
+  var job = leaseJobs.find(function(j){ return j.id===jobId; });
+  var na = Object.assign({}, job.na_categories || {});
+  var wasNA = !!na[catKey];
+  if (wasNA) delete na[catKey]; else na[catKey] = true;
+  job.na_categories = na;
+  await sb.from('lease_jobs').update({na_categories:na,updated_at:new Date().toISOString()}).eq('id',jobId);
+  await logActivity(jobId, (wasNA?'Removed N/A from':'Marked N/A:') + ' "'+getCatLabel(catKey)+'"');
+  render();
+}
+
+/* ── ACTIVITY LOG ───────────────────────────────────────── */
+async function logActivity(jobId, action) {
+  var entry = {job_id:jobId,user_id:currentUser.id,user_name:currentUser.name,action:action,created_at:new Date().toISOString()};
+  await sb.from('lease_activity_log').insert(entry);
+  activityLog.unshift(entry);
+  logTotal++;
+}
+
+/* ── HELPERS ────────────────────────────────────────────── */
+function getCatLabel(key) {
+  var item = ALL_CATS.find(function(c){ return c.key===key; });
+  return item ? item.label : key;
+}
+
+function getJobProgress(jobId) {
+  var job = leaseJobs.find(function(j){ return j.id===jobId; });
+  if (!job) return { uploaded:0, total:0, isComplete:false, hasAny:false };
+  var na = job.na_categories || {};
+  var required = ALL_CATS.filter(function(c){ return !na[c.key]; });
+  var uploadedKeys = new Set((jobUploads[jobId]||[]).map(function(u){ return u.category_key; }));
+  var uploadedRequired = required.filter(function(c){ return uploadedKeys.has(c.key); });
+  return {
+    uploaded: uploadedRequired.length,
+    total: required.length,
+    isComplete: required.length > 0 && uploadedRequired.length === required.length,
+    hasAny: uploadedRequired.length > 0
+  };
+}
+
+function getSectionProgress(jobId, section) {
+  var job = leaseJobs.find(function(j){ return j.id===jobId; });
+  if (!job) return { uploaded:0, required:0, total:section.items.length };
+  var na = job.na_categories || {};
+  var required = section.items.filter(function(i){ return !na[i.key]; });
+  var uploadedKeys = new Set((jobUploads[jobId]||[]).map(function(u){ return u.category_key; }));
+  var uploaded = required.filter(function(i){ return uploadedKeys.has(i.key); });
+  return { uploaded:uploaded.length, required:required.length, total:section.items.length };
+}
+
+function initials(n){ return n.split(' ').map(function(w){ return w[0]||''; }).join('').toUpperCase().slice(0,2); }
+function formatSize(bytes) {
+  if (!bytes) return '';
+  if (bytes < 1024) return bytes+'B';
+  if (bytes < 1048576) return (bytes/1024).toFixed(1)+'KB';
+  return (bytes/1048576).toFixed(1)+'MB';
+}
+function timeAgo(ts) {
+  var d = Math.floor((Date.now()-new Date(ts))/1000);
+  if (d<60) return 'just now';
+  if (d<3600) return Math.floor(d/60)+'m ago';
+  if (d<86400) return Math.floor(d/3600)+'h ago';
+  return Math.floor(d/86400)+'d ago';
+}
+function showToast(msg){ var t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show'); setTimeout(function(){ t.classList.remove('show'); },3500); }
+function showUploading(msg){ document.getElementById('uploading-msg').textContent=msg||'Working...'; document.getElementById('uploading-overlay').classList.add('show'); }
+function setUploadingMsg(msg){ document.getElementById('uploading-msg').textContent=msg; }
+function hideUploading(){ document.getElementById('uploading-overlay').classList.remove('show'); }
+
+/* ── STATS ──────────────────────────────────────────────── */
+function updateStats() {
+  var total=leaseJobs.length, complete=0, inprog=0, none=0;
+  leaseJobs.forEach(function(j){
+    var p = getJobProgress(j.id);
+    if (p.isComplete) complete++;
+    else if (p.hasAny) inprog++;
+    else none++;
+  });
+  document.getElementById('s-total').textContent = total;
+  document.getElementById('s-complete').textContent = complete;
+  document.getElementById('s-inprog').textContent = inprog;
+  document.getElementById('s-none').textContent = none;
+}
+
+/* ── VIEWS ──────────────────────────────────────────────── */
+function setView(v) {
+  currentView = v;
+  ['overview','cards','log'].forEach(function(n){
+    document.getElementById('view-'+n).style.display = v===n?'block':'none';
+    document.getElementById('btn-'+n).className = 'vbtn'+(v===n?' active':'');
+  });
+  document.getElementById('add-job-btn').style.display = v==='log'?'none':'block';
+}
+
+function render() { updateStats(); renderOverview(); renderCards(); renderLog(); }
+
+/* ── OVERVIEW ───────────────────────────────────────────── */
+function renderOverview() {
+  var el = document.getElementById('view-overview');
+  if (!leaseJobs.length) { el.innerHTML='<div class="overview-wrap"><div class="empty">No lease jobs yet. Add one below or sync from HCP.</div></div>'; return; }
+  var html = '<div class="overview-wrap"><table><thead><tr><th>Customer</th><th>Address</th><th>CSG ID</th><th>Total</th>';
+  DOC_SECTIONS.forEach(function(s){ html += '<th style="font-size:10px">'+s.label+'</th>'; });
+  html += '<th></th></tr></thead><tbody>';
+  leaseJobs.forEach(function(j){
+    var p = getJobProgress(j.id);
+    var totalClass = p.isComplete ? 'sp-complete' : p.hasAny ? 'sp-partial' : 'sp-empty';
+    html += '<tr>';
+    html += '<td><div class="ov-name">'+j.name+'</div></td>';
+    html += '<td><div class="ov-addr">'+(j.address||'—')+'</div></td>';
+    html += '<td>'+(j.csg_id?'<span class="ov-csg">'+j.csg_id+'</span>':'<span style="color:#ddd">—</span>')+'</td>';
+    html += '<td><span class="sp-badge '+totalClass+'">'+p.uploaded+'/'+p.total+'</span></td>';
+    DOC_SECTIONS.forEach(function(s){
+      var sp = getSectionProgress(j.id, s);
+      var cls = sp.required===0 ? 'sp-na' : sp.uploaded===sp.required ? 'sp-complete' : sp.uploaded>0 ? 'sp-partial' : 'sp-empty';
+      html += '<td class="ov-section-cell"><span class="sp-badge '+cls+'" style="border-left:2px solid '+s.color+'">'+sp.uploaded+'/'+sp.required+'</span></td>';
+    });
+    html += '<td><button onclick="downloadAllDocs(\''+j.id+'\')" style="font-size:11px;padding:3px 8px;border:0.5px solid #16a34a;border-radius:5px;background:#fff;color:#16a34a;cursor:pointer;" title="Download all docs">&#8595; ZIP</button></td>';
+    html += '</tr>';
+  });
+  html += '</tbody></table></div>';
+  el.innerHTML = html;
+}
+
+/* ── CARDS ──────────────────────────────────────────────── */
+function renderCards() {
+  var el = document.getElementById('view-cards');
+  if (!leaseJobs.length) { el.innerHTML='<div class="empty">No lease jobs yet.</div>'; return; }
+  var html = '<div class="installs">';
+  leaseJobs.forEach(function(j){
+    var isOpen = openCards.has(j.id);
+    var delOpen = showDel.has(j.id);
+    var p = getJobProgress(j.id);
+    var pillClass = p.isComplete ? 'pill-done' : p.hasAny ? 'pill-prog' : 'pill-missing';
+    html += '<div class="card" id="card-'+j.id+'" ondragover="dragOver(event,\''+j.id+'\')" ondrop="drop(event,\''+j.id+'\')">';
+    html += '<div class="card-header" onclick="toggleCard(\''+j.id+'\')">';
+    html += '<span class="drag-handle" draggable="true" ondragstart="dragStart(event,\''+j.id+'\')" ondragend="dragEnd(event)" onclick="event.stopPropagation()">&#8942;</span>';
+    html += '<div class="avatar">'+initials(j.name)+'</div>';
+    html += '<div class="card-meta"><div class="card-name">'+j.name+'</div>';
+    if (j.address) html += '<div class="card-addr">'+j.address+'</div>';
+    if (j.csg_id) html += '<div class="card-csg">CSG ID: '+j.csg_id+'</div>';
+    html += '</div>';
+    html += '<div class="card-pills"><span class="pill '+pillClass+'">'+p.uploaded+'/'+p.total+' docs</span>';
+    if (p.isComplete) html += '<span class="pill pill-done">&#10003; Complete</span>';
+    html += '</div>';
+    html += '<span class="chevron '+(isOpen?'open':'')+'">&#9662;</span></div>';
+    html += '<div class="card-body '+(isOpen?'open':'')+'">';
+    // Meta fields
+    html += '<div class="meta-section">';
+    html += '<div class="meta-field"><span class="meta-label">CSG ID</span><input type="text" class="meta-input" placeholder="e.g. 51" value="'+(j.csg_id||'')+'" onchange="saveJobField(\''+j.id+'\',\'csg_id\',this.value)"></div>';
+    html += '<div class="meta-field" style="flex:2"><span class="meta-label">Notes</span><input type="text" class="meta-input" placeholder="Internal notes..." value="'+(j.notes||'').replace(/"/g,'&quot;')+'" onchange="saveJobField(\''+j.id+'\',\'notes\',this.value)"></div>';
+    html += '</div>';
+    // Download bar
+    html += '<div class="download-bar"><button class="dl-btn" onclick="downloadAllDocs(\''+j.id+'\')">&#8595; Download All Documents (.zip)</button>';
+    html += '<span class="dl-hint">Files renamed to: CustomerName - Category</span></div>';
+    // Doc sections
+    html += '<div class="doc-sections">';
+    DOC_SECTIONS.forEach(function(section){
+      html += renderDocSection(j, section);
+    });
+    html += '</div>';
+    // HCP notes
+    if (j.hcp_notes && j.hcp_notes.length) {
+      var notesOpen = openNotes.has(j.id);
+      html += '<div class="hcp-section"><div class="hcp-hdr" onclick="toggleNotes(\''+j.id+'\')"><span class="hcp-title">&#128203; HCP notes ('+j.hcp_notes.length+')</span><span class="chevron '+(notesOpen?'open':'')+'">&#9662;</span></div>';
+      html += '<div class="hcp-body '+(notesOpen?'open':'')+'">';
+      (j.hcp_notes||[]).forEach(function(n){
+        html += '<div class="note-item">'+n.text+'</div>';
+      });
+      html += '</div></div>';
+    }
+    // Delete zone
+    html += '<div class="delete-zone">';
+    if (!delOpen) {
+      html += '<button class="delete-btn" onclick="showDeleteConfirm(\''+j.id+'\')">&#128465; Delete job</button>';
+    } else {
+      html += '<span class="delete-hint">Type DELETE to confirm:</span>';
+      html += '<div class="delete-confirm-area show">';
+      html += '<input type="text" class="delete-type-input" id="del-input-'+j.id+'" placeholder="DELETE">';
+      html += '<button class="delete-go-btn" onclick="confirmDelete(\''+j.id+'\')">Delete</button>';
+      html += '<button class="delete-cancel-btn" onclick="cancelDelete(\''+j.id+'\')">Cancel</button>';
+      html += '</div>';
+    }
+    html += '</div>';
+    html += '</div></div>';
+  });
+  html += '</div>';
+  el.innerHTML = html;
+}
+
+function renderDocSection(job, section) {
+  var jobId = job.id;
+  var sp = getSectionProgress(jobId, section);
+  var sectionOpen = openSections[jobId] && openSections[jobId].has(section.key);
+  var progClass = sp.required===0 ? 'sp-na' : sp.uploaded===sp.required ? 'sp-complete' : sp.uploaded>0 ? 'sp-partial' : 'sp-empty';
+  var progText = sp.uploaded+'/'+sp.required;
+  var html = '<div class="doc-section">';
+  html += '<div class="ds-hdr" onclick="toggleSection(\''+jobId+'\',\''+section.key+'\')">'+
+    '<div class="ds-dot" style="background:'+section.color+'"></div>'+
+    '<span class="ds-label">'+section.label+'</span>'+
+    '<span class="sp-badge '+progClass+'" style="margin-right:6px;border-left:2px solid '+section.color+'">'+progText+'</span>'+
+    '<span class="ds-chevron '+(sectionOpen?'open':'')+'">&#9662;</span>'+
+  '</div>';
+  html += '<div class="ds-body '+(sectionOpen?'open':'')+'">';
+  section.items.forEach(function(item){
+    html += renderDocItem(job, item);
+  });
+  html += '</div></div>';
+  return html;
+}
+
+function renderDocItem(job, item) {
+  var jobId = job.id;
+  var na = (job.na_categories||{})[item.key];
+  var files = (jobUploads[jobId]||[]).filter(function(u){ return u.category_key===item.key; });
+  var hasFiles = files.length > 0;
+  var statusClass = na ? 'ds-na' : hasFiles ? 'ds-uploaded' : 'ds-missing';
+  var statusIcon = na ? 'N/A' : hasFiles ? '&#10003;' : '&#10007;';
+  var html = '<div class="doc-item">';
+  html += '<div class="doc-item-row">';
+  html += '<div class="doc-status '+statusClass+'">'+statusIcon+'</div>';
+  html += '<span class="doc-lbl'+(na?' na-lbl':'')+'">'+item.label+'</span>';
+  html += '<div class="doc-act">';
+  html += '<button class="up-btn" onclick="triggerUpload(\''+jobId+'\',\''+item.key+'\')">&#8593; Upload</button>';
+  html += '<button class="na-btn'+(na?' na-active':'')+'" onclick="toggleNA(\''+jobId+'\',\''+item.key+'\')">N/A</button>';
+  html += '</div></div>';
+  if (hasFiles) {
+    html += '<div class="doc-files">';
+    files.forEach(function(f){
+      var url = getFileUrl(f.storage_path);
+      html += '<div class="file-row">';
+      html += '<a href="'+url+'" target="_blank" class="file-link">&#128196; '+f.file_name+'</a>';
+      html += '<span class="file-sz">'+formatSize(f.file_size)+'</span>';
+      if (f.uploaded_by_name) html += '<span class="file-who">'+f.uploaded_by_name+'</span>';
+      html += '<button class="file-del" onclick="deleteFile(\''+f.id+'\',\''+f.storage_path+'\',\''+jobId+'\',\''+item.key+'\')" title="Delete file">&#10005;</button>';
+      html += '</div>';
+    });
+    html += '</div>';
+  }
+  html += '</div>';
+  return html;
+}
+
+/* ── LOG ────────────────────────────────────────────────── */
+function renderLog() {
+  var el = document.getElementById('view-log');
+  if (!activityLog.length) { el.innerHTML='<div class="empty">No activity yet.</div>'; return; }
+  var jobMap = {};
+  leaseJobs.forEach(function(j){ jobMap[j.id] = j.name; });
+  var html = '<div class="log-title">Activity log <span style="font-size:12px;color:#aaa;font-weight:400">('+logTotal+' total entries)</span></div><div class="log-list">';
+  activityLog.forEach(function(l){
+    html += '<div class="log-item"><span class="log-who">'+l.user_name+'</span><span class="log-what">'+(jobMap[l.job_id]?'<strong>'+jobMap[l.job_id]+'</strong> &mdash; ':'')+l.action+'</span><span class="log-when">'+timeAgo(l.created_at)+'</span></div>';
+  });
+  html += '</div>';
+  if (activityLog.length < logTotal) {
+    html += '<button class="load-more-btn" onclick="loadMoreLog()">Load more ('+Math.min(LOG_BATCH, logTotal-activityLog.length)+' of '+(logTotal-activityLog.length)+' remaining)</button>';
+  }
+  el.innerHTML = html;
+}
+
+/* ── TOGGLE HELPERS ─────────────────────────────────────── */
+function toggleCard(id){ if(openCards.has(id))openCards.delete(id);else openCards.add(id); render(); }
+function toggleSection(jobId, sectionKey){
+  if (!openSections[jobId]) openSections[jobId] = new Set();
+  if (openSections[jobId].has(sectionKey)) openSections[jobId].delete(sectionKey);
+  else openSections[jobId].add(sectionKey);
+  render();
+}
+function toggleNotes(id){ if(openNotes.has(id))openNotes.delete(id);else openNotes.add(id); render(); }
+
+/* ── DRAG & DROP ────────────────────────────────────────── */
+function dragStart(e,id){ dragId=id; e.dataTransfer.effectAllowed='move'; setTimeout(function(){ var el=document.getElementById('card-'+id); if(el) el.classList.add('dragging'); },0); }
+function dragEnd(e){ document.querySelectorAll('.card').forEach(function(el){ el.classList.remove('dragging','drag-over'); }); dragId=null; dragOverId=null; }
+function dragOver(e,id){ e.preventDefault(); if(id===dragId) return; if(dragOverId!==id){ document.querySelectorAll('.card').forEach(function(el){ el.classList.remove('drag-over'); }); var el=document.getElementById('card-'+id); if(el) el.classList.add('drag-over'); dragOverId=id; } e.dataTransfer.dropEffect='move'; }
+async function drop(e,targetId){
+  e.preventDefault();
+  if(!dragId||dragId===targetId) return;
+  var fi=leaseJobs.findIndex(function(j){ return j.id===dragId; });
+  var ti=leaseJobs.findIndex(function(j){ return j.id===targetId; });
+  if(fi===-1||ti===-1) return;
+  var moved=leaseJobs.splice(fi,1)[0];
+  leaseJobs.splice(ti,0,moved);
+  leaseJobs.forEach(function(j,i){ j.sort_order=i; });
+  render();
+  await Promise.all(leaseJobs.map(function(j,i){ return sb.from('lease_jobs').update({sort_order:i}).eq('id',j.id); }));
+  showToast('Order saved.');
+}
+
+/* ── REALTIME ───────────────────────────────────────────── */
+var realtimeChannel = null;
+function startRealtime() {
+  setInterval(function(){ silentRefresh(); }, 30000);
+  realtimeChannel = sb.channel('lease-changes')
+    .on('postgres_changes',{event:'*',schema:'public',table:'lease_jobs'},function(){ silentRefresh(); })
+    .on('postgres_changes',{event:'*',schema:'public',table:'lease_doc_uploads'},function(){ silentRefresh(); })
+    .on('postgres_changes',{event:'*',schema:'public',table:'lease_activity_log'},function(){ silentRefresh(); })
+    .subscribe();
+}
+
+var refreshing = false;
+async function silentRefresh() {
+  if (refreshing) return;
+  refreshing = true;
+  try {
+    var r1 = await sb.from('lease_jobs').select('*').order('sort_order',{ascending:true}).order('created_at',{ascending:false});
+    var r2 = await sb.from('lease_doc_uploads').select('*').order('uploaded_at',{ascending:false});
+    var r3 = await sb.from('lease_activity_log').select('*',{count:'exact'}).order('created_at',{ascending:false}).range(0,LOG_BATCH-1);
+    leaseJobs = r1.data || [];
+    var allUploads = r2.data || [];
+    activityLog = r3.data || [];
+    logTotal = r3.count || 0;
+    logOffset = activityLog.length;
+    jobUploads = {};
+    leaseJobs.forEach(function(j){ jobUploads[j.id]=[]; });
+    allUploads.forEach(function(u){ if(!jobUploads[u.job_id]) jobUploads[u.job_id]=[]; jobUploads[u.job_id].push(u); });
+    render();
+  } catch(e) {}
+  refreshing = false;
+}
+
+/* ── START ──────────────────────────────────────────────── */
+init();
+</script>
+</body>
+</html>
