@@ -96,6 +96,7 @@ tr:last-child td{border-bottom:none;}
 .doc-item-row{display:flex;align-items:center;gap:8px;}
 .doc-status{width:20px;height:20px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;flex-shrink:0;}
 .ds-uploaded{background:#dcfce7;color:#16a34a;}
+.ds-submitted{background:#dbeafe;color:#2563eb;}
 .ds-missing{background:#fee2e2;color:#dc2626;}
 .ds-na{background:#f4f4f0;color:#888;font-size:8px;font-weight:700;}
 .doc-lbl{flex:1;font-size:12px;color:#1a1a1a;}
@@ -106,6 +107,9 @@ tr:last-child td{border-bottom:none;}
 .na-btn{font-size:11px;padding:3px 8px;border:0.5px solid #ddd;border-radius:5px;background:#fff;color:#888;cursor:pointer;font-family:inherit;}
 .na-btn:hover{background:#f4f4f0;}
 .na-btn.na-active{background:#f4f4f0;border-color:#bbb;color:#555;}
+.sub-btn{font-size:11px;padding:3px 8px;border:0.5px solid #ddd;border-radius:5px;background:#fff;color:#888;cursor:pointer;font-family:inherit;}
+.sub-btn:hover{background:#eff6ff;border-color:#2563eb;color:#2563eb;}
+.sub-btn.sub-active{background:#eff6ff;border-color:#2563eb;color:#2563eb;font-weight:500;}
 /* File list */
 .doc-files{padding:5px 0 6px 38px;display:flex;flex-direction:column;gap:3px;}
 .file-row{display:flex;align-items:center;gap:8px;}
@@ -666,6 +670,18 @@ async function toggleNA(jobId, catKey) {
   render();
 }
 
+/* ── SUBMITTED TOGGLE ───────────────────────────────────── */
+async function toggleSubmitted(jobId, catKey) {
+  var job = leaseJobs.find(function(j){ return j.id===jobId; });
+  var sub = Object.assign({}, job.submitted_categories || {});
+  var wasSub = !!sub[catKey];
+  if (wasSub) delete sub[catKey]; else sub[catKey] = true;
+  job.submitted_categories = sub;
+  await sb.from('lease_jobs').update({submitted_categories:sub,updated_at:new Date().toISOString()}).eq('id',jobId);
+  await logActivity(jobId, (wasSub?'Unmarked submitted:':'Marked submitted on portal:') + ' "'+getCatLabel(catKey)+'"');
+  render();
+}
+
 /* ── ACTIVITY LOG ───────────────────────────────────────── */
 async function logActivity(jobId, action) {
   var entry = {job_id:jobId,user_id:currentUser.id,user_name:currentUser.name,action:action,created_at:new Date().toISOString()};
@@ -684,18 +700,19 @@ function getJobProgress(jobId) {
   var job = leaseJobs.find(function(j){ return j.id===jobId; });
   if (!job) return { uploaded:0, total:0, isComplete:false, hasAny:false };
   var na = job.na_categories || {};
+  var sub = job.submitted_categories || {};
   var required = [];
   DOC_SECTIONS.forEach(function(s){
     if (s.optional) return;
     s.items.forEach(function(item){ if (!na[item.key]) required.push(item); });
   });
   var uploadedKeys = new Set((jobUploads[jobId]||[]).map(function(u){ return u.category_key; }));
-  var uploadedRequired = required.filter(function(c){ return uploadedKeys.has(c.key); });
+  var doneRequired = required.filter(function(c){ return uploadedKeys.has(c.key) || !!sub[c.key]; });
   return {
-    uploaded: uploadedRequired.length,
+    uploaded: doneRequired.length,
     total: required.length,
-    isComplete: required.length > 0 && uploadedRequired.length === required.length,
-    hasAny: uploadedRequired.length > 0
+    isComplete: required.length > 0 && doneRequired.length === required.length,
+    hasAny: doneRequired.length > 0
   };
 }
 
@@ -883,16 +900,18 @@ function renderDocSection(job, section) {
 function renderDocItem(job, item) {
   var jobId = job.id;
   var na = (job.na_categories||{})[item.key];
+  var sub = (job.submitted_categories||{})[item.key];
   var files = (jobUploads[jobId]||[]).filter(function(u){ return u.category_key===item.key; });
   var hasFiles = files.length > 0;
-  var statusClass = na ? 'ds-na' : hasFiles ? 'ds-uploaded' : 'ds-missing';
-  var statusIcon = na ? 'N/A' : hasFiles ? '&#10003;' : '&#10007;';
+  var statusClass = na ? 'ds-na' : hasFiles ? 'ds-uploaded' : sub ? 'ds-submitted' : 'ds-missing';
+  var statusIcon = na ? 'N/A' : (hasFiles || sub) ? '&#10003;' : '&#10007;';
   var html = '<div class="doc-item">';
   html += '<div class="doc-item-row">';
   html += '<div class="doc-status '+statusClass+'">'+statusIcon+'</div>';
   html += '<span class="doc-lbl'+(na?' na-lbl':'')+'">'+item.label+'</span>';
   html += '<div class="doc-act">';
-  html += '<button class="up-btn" onclick="triggerUpload(\''+jobId+'\',\''+item.key+'\')">&#8593; Upload</button>';
+  if (!sub) html += '<button class="up-btn" onclick="triggerUpload(\''+jobId+'\',\''+item.key+'\')">&#8593; Upload</button>';
+  html += '<button class="sub-btn'+(sub?' sub-active':'')+'" onclick="toggleSubmitted(\''+jobId+'\',\''+item.key+'\')" title="Mark as submitted on CSG portal">'+(sub?'&#10003; Submitted':'Submitted')+'</button>';
   html += '<button class="na-btn'+(na?' na-active':'')+'" onclick="toggleNA(\''+jobId+'\',\''+item.key+'\')">N/A</button>';
   html += '</div></div>';
   if (hasFiles) {
@@ -1010,6 +1029,7 @@ function printChecklist() {
   html += '.item-row{display:flex;align-items:center;gap:7px;padding:2px 0;}';
   html += '.chk{width:12px;height:12px;border:1.5px solid #999;border-radius:2px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:9px;}';
   html += '.chk-done{background:#e8fce8;border-color:#16a34a;color:#16a34a;}';
+  html += '.chk-sub{background:#dbeafe;border-color:#2563eb;color:#2563eb;}';
   html += '.chk-na{background:#f0f0f0;border-color:#bbb;color:#888;font-size:7px;font-weight:700;}';
   html += '.item-lbl{flex:1;} .item-lbl.na-lbl{color:#aaa;text-decoration:line-through;}';
   html += '.file-list{padding-left:19px;} .file-name{font-size:9px;color:#2563eb;}';
@@ -1051,15 +1071,17 @@ function printChecklist() {
       html += '<div class="sec-hdr">'+section.label+(section.optional?' <span style="font-weight:400;color:#aaa;text-transform:none;letter-spacing:0">(Driller Submits — not required)</span>':'')+'</div>';
       section.items.forEach(function(item){
         var isNA = !!na[item.key];
+        var isSub = !!(job.submitted_categories||{})[item.key];
         var files = (jobUploads[job.id]||[]).filter(function(u){ return u.category_key===item.key; });
-        var done = files.length > 0;
-        var chkCls = isNA ? 'chk chk-na' : done ? 'chk chk-done' : 'chk';
-        var chkIcon = isNA ? 'N/A' : done ? '&#10003;' : '';
+        var hasFiles = files.length > 0;
+        var chkCls = isNA ? 'chk chk-na' : hasFiles ? 'chk chk-done' : isSub ? 'chk chk-sub' : 'chk';
+        var chkIcon = isNA ? 'N/A' : (hasFiles || isSub) ? '&#10003;' : '';
         html += '<div class="item-row">';
         html += '<div class="'+chkCls+'">'+chkIcon+'</div>';
         html += '<span class="item-lbl'+(isNA?' na-lbl':'')+'">'+item.label+'</span>';
+        if (isSub && !hasFiles) html += '<span style="font-size:9px;color:#2563eb;margin-left:6px">On Portal</span>';
         html += '</div>';
-        if (done && files.length) {
+        if (hasFiles) {
           html += '<div class="file-list">';
           files.forEach(function(f){ html += '<div class="file-name">&#128196; '+f.file_name+'</div>'; });
           html += '</div>';
