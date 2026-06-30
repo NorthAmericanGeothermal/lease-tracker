@@ -682,6 +682,38 @@ async function toggleSubmitted(jobId, catKey) {
   render();
 }
 
+/* ── AWL SERIALS ────────────────────────────────────────── */
+async function saveAWLSerials(jobId, serials) {
+  var job = leaseJobs.find(function(j){ return j.id===jobId; });
+  if (!job) return;
+  job.awl_serials = serials;
+  await sb.from('lease_jobs').update({awl_serials:serials,updated_at:new Date().toISOString()}).eq('id',jobId);
+}
+async function addAWLSerial(jobId) {
+  var job = leaseJobs.find(function(j){ return j.id===jobId; });
+  if (!job) return;
+  var serials = (job.awl_serials||[]).slice();
+  serials.push('');
+  await saveAWLSerials(jobId, serials);
+  render();
+}
+async function removeAWLSerial(jobId, idx) {
+  var job = leaseJobs.find(function(j){ return j.id===jobId; });
+  if (!job) return;
+  var serials = (job.awl_serials||[]).slice();
+  var removed = serials.splice(idx, 1)[0];
+  await saveAWLSerials(jobId, serials);
+  if (removed) await logActivity(jobId, 'Removed AWL serial: '+removed);
+  render();
+}
+async function updateAWLSerial(jobId, idx, value) {
+  var job = leaseJobs.find(function(j){ return j.id===jobId; });
+  if (!job) return;
+  var serials = (job.awl_serials||[]).slice();
+  serials[idx] = value;
+  await saveAWLSerials(jobId, serials);
+}
+
 /* ── ACTIVITY LOG ───────────────────────────────────────── */
 async function logActivity(jobId, action) {
   var entry = {job_id:jobId,user_id:currentUser.id,user_name:currentUser.name,action:action,created_at:new Date().toISOString()};
@@ -827,9 +859,19 @@ function renderCards() {
     html += '<span class="chevron '+(isOpen?'open':'')+'">&#9662;</span></div>';
     html += '<div class="card-body '+(isOpen?'open':'')+'">';
     // Meta fields
+    var awlSerials = j.awl_serials || [];
     html += '<div class="meta-section">';
     html += '<div class="meta-field"><span class="meta-label">CSG ID</span><input type="text" class="meta-input" placeholder="e.g. 51" value="'+(j.csg_id||'')+'" onchange="saveJobField(\''+j.id+'\',\'csg_id\',this.value)"></div>';
-    html += '<div class="meta-field"><span class="meta-label">Symphony AWL S/N</span><input type="text" class="meta-input" placeholder="WaterFurnace serial #" value="'+(j.awl_serial||'')+'" onchange="saveJobField(\''+j.id+'\',\'awl_serial\',this.value)"></div>';
+    html += '<div class="meta-field" style="flex-direction:column;align-items:flex-start;gap:3px;min-width:180px;">';
+    html += '<span class="meta-label">Symphony AWL S/N (WaterFurnace)</span>';
+    awlSerials.forEach(function(sn, idx){
+      html += '<div style="display:flex;gap:4px;width:100%;margin-top:2px">';
+      html += '<input type="text" class="meta-input" placeholder="Serial #" style="flex:1;min-width:0" value="'+sn.replace(/"/g,'&quot;')+'" onchange="updateAWLSerial(\''+j.id+'\','+idx+',this.value)">';
+      html += '<button onclick="removeAWLSerial(\''+j.id+'\','+idx+')" style="flex-shrink:0;padding:3px 7px;border:0.5px solid #fca5a5;border-radius:5px;background:#fff;color:#dc2626;cursor:pointer;font-size:12px;font-family:inherit;">&#10005;</button>';
+      html += '</div>';
+    });
+    html += '<button onclick="addAWLSerial(\''+j.id+'\')" style="font-size:11px;padding:2px 8px;margin-top:4px;border:0.5px solid #16a34a;border-radius:5px;background:#fff;color:#16a34a;cursor:pointer;font-family:inherit;">+ Add S/N</button>';
+    html += '</div>';
     html += '<div class="meta-field" style="flex:2"><span class="meta-label">Notes</span><input type="text" class="meta-input" placeholder="Internal notes..." value="'+(j.notes||'').replace(/"/g,'&quot;')+'" onchange="saveJobField(\''+j.id+'\',\'notes\',this.value)"></div>';
     html += '</div>';
     // Download bar
@@ -1059,7 +1101,10 @@ function printChecklist() {
     html += '<div class="job-hdr">';
     html += '<div><div class="job-name">'+job.name+'</div>';
     if (job.address) html += '<div class="job-addr">'+job.address+'</div>';
-    if (job.awl_serial) html += '<div class="job-addr">Symphony AWL S/N: <strong>'+job.awl_serial+'</strong></div>';
+    var printSerials = job.awl_serials || [];
+    printSerials.forEach(function(sn, si){
+      if (sn) html += '<div class="job-addr">Symphony AWL S/N'+(printSerials.length>1?' #'+(si+1):'')+': <strong>'+sn+'</strong></div>';
+    });
     html += '</div>';
     html += '<div class="job-meta">';
     if (job.csg_id) html += 'CSG ID: '+job.csg_id+'<br>';
