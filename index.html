@@ -119,6 +119,10 @@ tr:last-child td{border-bottom:none;}
 .file-del{font-size:13px;background:none;border:none;color:#dc2626;cursor:pointer;padding:0 3px;flex-shrink:0;opacity:0.6;}
 .file-del:hover{opacity:1;}
 .file-who{font-size:10px;color:#ccc;white-space:nowrap;flex-shrink:0;}
+/* Monitoring */
+.monitoring-section{padding:10px 16px;border-top:0.5px solid #f0f0f0;}
+.monitoring-hdr{font-size:12px;font-weight:600;color:#555;margin-bottom:8px;display:flex;align-items:center;gap:6px;}
+.monitoring-fields{display:flex;gap:12px;flex-wrap:wrap;}
 /* HCP Notes */
 .hcp-section{padding:12px 16px;border-top:0.5px solid #f0f0f0;}
 .hcp-hdr{display:flex;justify-content:space-between;align-items:center;cursor:pointer;}
@@ -271,12 +275,13 @@ var sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 /* ── DOCUMENT SECTIONS ──────────────────────────────────── */
 var DOC_SECTIONS = [
   { key:'acceptance', label:'Job Acceptance', color:'#16a34a', items:[
-    { key:'signed_work_order', label:'Signed Work Order' }
+    { key:'signed_work_order',   label:'Signed Work Order' },
+    { key:'intent_to_order',     label:'Intent to Order Equipment' }
   ]},
   { key:'permits', label:'Permits', color:'#2563eb', items:[
-    { key:'building_permit',      label:'Building Permit' },
-    { key:'electrical_permit',    label:'Electrical Permit' },
-    { key:'mechanical_permit',    label:'Mechanical Permit' }
+    { key:'building_permit',     label:'Building Permit' },
+    { key:'electrical_permit',   label:'Electrical Permit' },
+    { key:'mechanical_permit',   label:'Mechanical Permit' }
   ]},
   { key:'driller_qa', label:'Driller QA', color:'#7c3aed', optional:true, items:[
     { key:'drilling_permit_app',          label:'Drilling Permit Application' },
@@ -286,26 +291,25 @@ var DOC_SECTIONS = [
     { key:'post_grout_pressure',          label:'Post-Grout Pressure Test' },
     { key:'loop_mfr_warranties',          label:'Loop Manufacturer Warranties' },
     { key:'driller_workmanship_warranty', label:'Driller Workmanship Warranty' },
-    { key:'drilling_invoice',             label:'Drilling Invoice' }
+    { key:'drilling_invoice',             label:'Drilling Invoice' },
+    { key:'as_built_drawings',            label:'As-Built Drawings' },
+    { key:'antifreeze_sds',               label:'Antifreeze SDS' },
+    { key:'pressure_flush_logs',          label:'Pressure Test & Flush Logs' },
+    { key:'site_restoration_photos',      label:'Site Restoration Photos' }
   ]},
   { key:'hvac_qa', label:'HVAC QA', color:'#0891b2', items:[
-    { key:'hp_nameplate_photo',  label:'Heat Pump Nameplate Photo' },
-    { key:'hp_install_photos',   label:'Heat Pump Installation Photos' },
-    { key:'commissioning_report',label:'QA Commissioning Report' },
-    { key:'hvac_qa_package',     label:'HVAC Standard QA Package' },
-    { key:'final_inspection',    label:'Final Inspection Report' },
-    { key:'cert_occupancy',      label:'Certificate of Occupancy' }
+    { key:'hp_nameplate_photo',   label:'Heat Pump Nameplate Photo' },
+    { key:'hp_install_photos',    label:'Heat Pump Installation Photos' },
+    { key:'commissioning_report', label:'QA Commissioning Report' },
+    { key:'final_inspection',     label:'Final Inspection Report' },
+    { key:'cert_occupancy',       label:'Certificate of Occupancy' }
   ]},
-  { key:'post_commission', label:'Post-Commissioning', color:'#059669', items:[
-    { key:'as_built_drawings',       label:'As-Built Drawings' },
-    { key:'antifreeze_sds',          label:'Antifreeze SDS' },
-    { key:'pressure_flush_logs',     label:'Pressure Test & Flush Logs' },
-    { key:'electrical_panel_photos', label:'Electrical Panel Photos' },
-    { key:'site_restoration_photos', label:'Site Restoration Photos' }
+  { key:'final', label:'Final', color:'#059669', items:[
+    { key:'equipment_serial_numbers', label:'Equipment Serial Numbers Documentation' }
   ]},
   { key:'warranties', label:'Warranties', color:'#d97706', items:[
-    { key:'hvac_mfr_warranties',         label:'HVAC Manufacturer Warranties' },
-    { key:'hvac_workmanship_warranty',   label:'HVAC Workmanship Warranty' }
+    { key:'hvac_mfr_warranties',       label:'HVAC Manufacturer Warranties' },
+    { key:'hvac_workmanship_warranty', label:'HVAC Workmanship Warranty' }
   ]},
   { key:'invoices', label:'Invoices', color:'#dc2626', items:[
     { key:'hvac_equipment_invoice',    label:'HVAC Equipment Invoice' },
@@ -714,6 +718,39 @@ async function updateAWLSerial(jobId, idx, value) {
   await saveAWLSerials(jobId, serials);
 }
 
+/* ── MONITORING SITES ───────────────────────────────────── */
+async function saveMonitoringSites(jobId, sites) {
+  var job = leaseJobs.find(function(j){ return j.id===jobId; });
+  if (!job) return;
+  job.monitoring_sites = sites;
+  await sb.from('lease_jobs').update({monitoring_sites:sites,updated_at:new Date().toISOString()}).eq('id',jobId);
+}
+async function addMonitoringSite(jobId) {
+  var job = leaseJobs.find(function(j){ return j.id===jobId; });
+  if (!job) return;
+  var sites = (job.monitoring_sites||[]).slice();
+  sites.push({name:'',site_id:''});
+  await saveMonitoringSites(jobId, sites);
+  render();
+}
+async function removeMonitoringSite(jobId, idx) {
+  var job = leaseJobs.find(function(j){ return j.id===jobId; });
+  if (!job) return;
+  var sites = (job.monitoring_sites||[]).slice();
+  var removed = sites.splice(idx, 1)[0];
+  await saveMonitoringSites(jobId, sites);
+  if (removed && (removed.name||removed.site_id)) await logActivity(jobId, 'Removed monitoring site: '+(removed.name||removed.site_id));
+  render();
+}
+async function updateMonitoringSite(jobId, idx, field, value) {
+  var job = leaseJobs.find(function(j){ return j.id===jobId; });
+  if (!job) return;
+  var sites = (job.monitoring_sites||[]).slice();
+  if (!sites[idx]) sites[idx] = {name:'',site_id:''};
+  sites[idx][field] = value;
+  await saveMonitoringSites(jobId, sites);
+}
+
 /* ── ACTIVITY LOG ───────────────────────────────────────── */
 async function logActivity(jobId, action) {
   var entry = {job_id:jobId,user_id:currentUser.id,user_name:currentUser.name,action:action,created_at:new Date().toISOString()};
@@ -896,6 +933,19 @@ function renderCards() {
     DOC_SECTIONS.forEach(function(section){
       html += renderDocSection(j, section);
     });
+    html += '</div>';
+    // Monitoring
+    var monSites = j.monitoring_sites || [];
+    html += '<div class="monitoring-section">';
+    html += '<div class="monitoring-hdr">&#128225; Monitoring</div>';
+    monSites.forEach(function(site, idx){
+      html += '<div style="display:flex;gap:6px;align-items:center;margin-bottom:5px;flex-wrap:wrap;">';
+      html += '<input type="text" class="meta-input" placeholder="Site Name" style="flex:1;min-width:120px" value="'+(site.name||'').replace(/"/g,'&quot;')+'" onchange="updateMonitoringSite(\''+j.id+'\','+idx+',\'name\',this.value)">';
+      html += '<input type="text" class="meta-input" placeholder="Site ID" style="flex:1;min-width:100px" value="'+(site.site_id||'').replace(/"/g,'&quot;')+'" onchange="updateMonitoringSite(\''+j.id+'\','+idx+',\'site_id\',this.value)">';
+      html += '<button onclick="removeMonitoringSite(\''+j.id+'\','+idx+')" style="flex-shrink:0;padding:3px 7px;border:0.5px solid #fca5a5;border-radius:5px;background:#fff;color:#dc2626;cursor:pointer;font-size:12px;font-family:inherit;">&#10005;</button>';
+      html += '</div>';
+    });
+    html += '<button onclick="addMonitoringSite(\''+j.id+'\')" style="font-size:11px;padding:2px 8px;margin-top:2px;border:0.5px solid #16a34a;border-radius:5px;background:#fff;color:#16a34a;cursor:pointer;font-family:inherit;">+ Add Monitoring Site</button>';
     html += '</div>';
     // HCP notes
     if (j.hcp_notes && j.hcp_notes.length) {
@@ -1148,6 +1198,20 @@ function printChecklist() {
       });
       html += '</div>';
     });
+    // Monitoring on print
+    var printMon = (job.monitoring_sites||[]).filter(function(s){ return s.name||s.site_id; });
+    if (printMon.length) {
+      html += '<div class="section-block" style="background:#f8f8ff;">';
+      html += '<div class="sec-hdr">Monitoring</div>';
+      printMon.forEach(function(site, si){
+        var label = printMon.length > 1 ? 'Site #'+(si+1) : 'Site';
+        html += '<div class="item-row"><span class="item-lbl"><strong>'+label+'</strong>';
+        if (site.name)    html += ' &mdash; Name: '+site.name;
+        if (site.site_id) html += ' &mdash; ID: '+site.site_id;
+        html += '</span></div>';
+      });
+      html += '</div>';
+    }
     html += '</div>';
   });
 
