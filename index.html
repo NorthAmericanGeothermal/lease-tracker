@@ -757,9 +757,22 @@ function getSectionProgress(jobId, section) {
     return { uploaded:uploaded.length, required:section.items.length, total:section.items.length, optional:true };
   }
   var na = job.na_categories || {};
+  var sub = job.submitted_categories || {};
   var required = section.items.filter(function(i){ return !na[i.key]; });
-  var uploaded2 = required.filter(function(i){ return uploadedKeys.has(i.key); });
+  var uploaded2 = required.filter(function(i){ return uploadedKeys.has(i.key) || !!sub[i.key]; });
   return { uploaded:uploaded2.length, required:required.length, total:section.items.length, optional:false };
+}
+
+function getSectionTooltip(jobId, section) {
+  var job = leaseJobs.find(function(j){ return j.id===jobId; });
+  if (!job) return '';
+  var na = job.na_categories || {};
+  var sub = job.submitted_categories || {};
+  var uploadedKeys = new Set((jobUploads[jobId]||[]).map(function(u){ return u.category_key; }));
+  return section.items.map(function(item){
+    var s = na[item.key] ? 'N/A' : uploadedKeys.has(item.key) ? '✓ Uploaded' : sub[item.key] ? '✓ Submitted (portal)' : '✗ Not submitted';
+    return s + '  ' + item.label;
+  }).join('\n');
 }
 
 function initials(n){ return n.split(' ').map(function(w){ return w[0]||''; }).join('').toUpperCase().slice(0,2); }
@@ -825,8 +838,9 @@ function renderOverview() {
     html += '<td><span class="sp-badge '+totalClass+'">'+p.uploaded+'/'+p.total+'</span></td>';
     DOC_SECTIONS.forEach(function(s){
       var sp = getSectionProgress(j.id, s);
-      var cls = sp.required===0 ? 'sp-na' : sp.uploaded===sp.required ? 'sp-complete' : sp.uploaded>0 ? 'sp-partial' : 'sp-empty';
-      html += '<td class="ov-section-cell"><span class="sp-badge '+cls+'" style="border-left:2px solid '+s.color+'">'+sp.uploaded+'/'+sp.required+'</span></td>';
+      var cls = sp.optional ? 'sp-na' : sp.required===0 ? 'sp-na' : sp.uploaded===sp.required ? 'sp-complete' : sp.uploaded>0 ? 'sp-partial' : 'sp-empty';
+      var tip = getSectionTooltip(j.id, s).replace(/"/g,'&quot;');
+      html += '<td class="ov-section-cell"><span class="sp-badge '+cls+'" style="border-left:2px solid '+s.color+';cursor:default" title="'+tip+'">'+sp.uploaded+'/'+sp.required+'</span></td>';
     });
     html += '<td><button onclick="downloadAllDocs(\''+j.id+'\')" style="font-size:11px;padding:3px 8px;border:0.5px solid #16a34a;border-radius:5px;background:#fff;color:#16a34a;cursor:pointer;" title="Download all docs">&#8595; ZIP</button></td>';
     html += '</tr>';
