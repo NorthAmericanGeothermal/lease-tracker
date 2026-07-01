@@ -30,6 +30,21 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:1.5rem;}
 .stat{background:#fff;border-radius:10px;border:0.5px solid #e5e5e5;padding:12px 16px;}
 .stat-label{font-size:11px;color:#888;margin-bottom:4px;}.stat-value{font-size:24px;font-weight:600;color:#1a1a1a;}
+.deadline-bar{border-radius:10px;padding:10px 16px;margin-bottom:1.25rem;display:flex;align-items:center;gap:14px;flex-wrap:wrap;}
+.deadline-bar.dl-green{background:#f0fdf4;border:0.5px solid #86efac;}
+.deadline-bar.dl-yellow{background:#fefce8;border:0.5px solid #fde047;}
+.deadline-bar.dl-red{background:#fff1f2;border:0.5px solid #fca5a5;}
+.dl-icon{font-size:18px;flex-shrink:0;}
+.dl-main{flex:1;}
+.dl-title{font-size:13px;font-weight:600;}
+.dl-green .dl-title{color:#15803d;}
+.dl-yellow .dl-title{color:#a16207;}
+.dl-red .dl-title{color:#dc2626;}
+.dl-sub{font-size:11px;color:#888;margin-top:2px;}
+.dl-days{font-size:22px;font-weight:700;flex-shrink:0;}
+.dl-green .dl-days{color:#16a34a;}
+.dl-yellow .dl-days{color:#ca8a04;}
+.dl-red .dl-days{color:#dc2626;}
 .view-toggle{display:flex;gap:6px;margin-bottom:1.25rem;}
 .vbtn{padding:6px 14px;font-size:13px;border-radius:8px;border:0.5px solid #ddd;background:#fff;color:#888;cursor:pointer;}
 .vbtn.active{background:#f4f4f0;color:#1a1a1a;font-weight:500;border-color:#bbb;}
@@ -222,6 +237,7 @@ tr:last-child td{border-bottom:none;}
       <div class="stat"><div class="stat-label">In progress</div><div class="stat-value" id="s-inprog" style="color:#ca8a04">0</div></div>
       <div class="stat"><div class="stat-label">Not started</div><div class="stat-value" id="s-none" style="color:#dc2626">0</div></div>
     </div>
+    <div id="deadline-bar"></div>
     <div class="view-toggle">
       <button class="vbtn active" id="btn-overview" onclick="setView('overview')">&#9776; Overview</button>
       <button class="vbtn" id="btn-cards" onclick="setView('cards')">&#128196; Jobs</button>
@@ -882,7 +898,34 @@ function setView(v) {
   document.getElementById('add-job-btn').style.display = v==='log'?'none':'block';
 }
 
-function render() { updateStats(); renderOverview(); renderCards(); renderLog(); }
+function renderDeadlineBar() {
+  var el = document.getElementById('deadline-bar');
+  if (!el) return;
+  var now = new Date();
+  var year = now.getFullYear();
+  var month = now.getMonth(); // 0-indexed
+  // Last day of current month
+  var cutoff = new Date(year, month + 1, 0); // day 0 of next month = last day of this month
+  cutoff.setHours(23, 59, 59, 999);
+  var daysLeft = Math.ceil((cutoff - now) / (1000 * 60 * 60 * 24));
+  // Payment date: 15th of next month
+  var payMonth = new Date(year, month + 1, 15);
+  var payStr = payMonth.toLocaleDateString('en-US', {month:'long', day:'numeric', year:'numeric'});
+  var cutoffStr = cutoff.toLocaleDateString('en-US', {month:'long', day:'numeric'});
+  var colorClass = daysLeft > 7 ? 'dl-green' : daysLeft > 2 ? 'dl-yellow' : 'dl-red';
+  var icon = daysLeft > 7 ? '&#128197;' : daysLeft > 2 ? '&#9888;&#65039;' : '&#128680;';
+  var urgency = daysLeft > 7 ? 'On track' : daysLeft > 2 ? 'Approaching cutoff' : daysLeft === 1 ? 'Cutoff tomorrow!' : daysLeft === 0 ? 'Cutoff TODAY!' : 'Cutoff this week';
+  el.innerHTML = '<div class="deadline-bar '+colorClass+'">' +
+    '<span class="dl-icon">'+icon+'</span>' +
+    '<div class="dl-main">' +
+      '<div class="dl-title">'+urgency+' &mdash; '+cutoffStr+' cutoff</div>' +
+      '<div class="dl-sub">Jobs submitted by '+cutoffStr+' &nbsp;&bull;&nbsp; Payment disbursed '+payStr+'</div>' +
+    '</div>' +
+    '<div class="dl-days">'+daysLeft+'<span style="font-size:12px;font-weight:400;margin-left:3px">day'+(daysLeft!==1?'s':'')+' left</span></div>' +
+  '</div>';
+}
+
+function render() { updateStats(); renderDeadlineBar(); renderOverview(); renderCards(); renderLog(); }
 
 /* ── OVERVIEW ───────────────────────────────────────────── */
 function renderOverview() {
