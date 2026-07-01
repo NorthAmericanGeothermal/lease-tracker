@@ -868,6 +868,11 @@ function timeAgo(ts) {
   if (d<86400) return Math.floor(d/3600)+'h ago';
   return Math.floor(d/86400)+'d ago';
 }
+function formatTimestamp(ts) {
+  var d = new Date(ts);
+  return d.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}) +
+    ' · ' + d.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit',hour12:true});
+}
 function showToast(msg){ var t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show'); setTimeout(function(){ t.classList.remove('show'); },3500); }
 function showUploading(msg){ document.getElementById('uploading-msg').textContent=msg||'Working...'; document.getElementById('uploading-overlay').classList.add('show'); }
 function setUploadingMsg(msg){ document.getElementById('uploading-msg').textContent=msg; }
@@ -1147,7 +1152,7 @@ function renderLog() {
   leaseJobs.forEach(function(j){ jobMap[j.id] = j.name; });
   var html = '<div class="log-title">Activity log <span style="font-size:12px;color:#aaa;font-weight:400">('+logTotal+' total entries)</span></div><div class="log-list">';
   activityLog.forEach(function(l){
-    html += '<div class="log-item"><span class="log-who">'+l.user_name+'</span><span class="log-what">'+(jobMap[l.job_id]?'<strong>'+jobMap[l.job_id]+'</strong> &mdash; ':'')+l.action+'</span><span class="log-when">'+timeAgo(l.created_at)+'</span></div>';
+    html += '<div class="log-item"><span class="log-who">'+l.user_name+'</span><span class="log-what">'+(jobMap[l.job_id]?'<strong>'+jobMap[l.job_id]+'</strong> &mdash; ':'')+l.action+'</span><span class="log-when" title="'+formatTimestamp(l.created_at)+'">'+timeAgo(l.created_at)+'<br><span style="font-size:10px;color:#ccc">'+formatTimestamp(l.created_at)+'</span></span></div>';
   });
   html += '</div>';
   if (activityLog.length < logTotal) {
@@ -1211,7 +1216,10 @@ async function silentRefresh() {
     jobUploads = {};
     leaseJobs.forEach(function(j){ jobUploads[j.id]=[]; });
     allUploads.forEach(function(u){ if(!jobUploads[u.job_id]) jobUploads[u.job_id]=[]; jobUploads[u.job_id].push(u); });
-    render();
+    // Don't re-render if user is actively typing in a field
+    var active = document.activeElement;
+    var isTyping = active && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA');
+    if (!isTyping) render();
   } catch(e) {}
   refreshing = false;
 }
