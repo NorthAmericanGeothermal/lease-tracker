@@ -313,27 +313,26 @@ var DOC_SECTIONS = [
   ]},
   { key:'equipment_install', label:'Equipment Installation', color:'#7c3aed', items:[
     { key:'hp_install_photos',  label:'Heat Pump Installation Photos', critical:true },
-    { key:'roughin_date_entry', label:'Rough-In Date — enter on CSG portal' }
+    { key:'roughin_date_entry', label:'Rough-In Date — enter on CSG portal', portalOnly:true }
   ]},
   { key:'hvac_qa', label:'Mechanical Completion', color:'#0891b2', items:[
     { key:'hp_nameplate_photo',       label:'Heat Pump Nameplate Photo', critical:true },
-    { key:'commissioning_date_entry', label:'Commissioning Date — enter on CSG portal' },
-    { key:'monitoring_eq_installed',  label:'Symphony Installed (portal: "Monitoring Equipment Installed")' },
+    { key:'commissioning_date_entry', label:'Commissioning Date — enter on CSG portal', portalOnly:true },
+    { key:'monitoring_eq_installed',  label:'Symphony Installed (portal: "Monitoring Equipment Installed")', portalOnly:true },
     { key:'commissioning_report',     label:'Commissioning Report' },
     { key:'final_inspection',         label:'Final Inspection Report',          conditional:true },
     { key:'cert_occupancy',           label:'Certificate of Occupancy',         conditional:true },
     { key:'electrical_panel_photos',  label:'Electrical Panel w/ New Breakers', conditional:true },
-    { key:'monitoring_info_uploaded', label:'Symphony Info Uploaded (portal: "Monitoring Information")', critical:true }
+    { key:'monitoring_info_uploaded', label:'Symphony Info Uploaded (portal: "Monitoring Information")', critical:true, portalOnly:true }
   ]},
   { key:'cod', label:'Commercial Operation', color:'#dc2626', items:[
-    { key:'cod_attestation', label:'COD Attestation — checkbox on CSG portal', critical:true }
+    { key:'cod_attestation', label:'COD Attestation — checkbox on CSG portal', critical:true, portalOnly:true }
   ]},
   { key:'equipment_details', label:'Equipment Details', color:'#f59e0b', items:[
-    { key:'switch_to_final', label:'Switch to Final — done on CSG portal' }
+    { key:'switch_to_final', label:'Switch to Final — done on CSG portal', portalOnly:true }
   ]},
   { key:'warranties', label:'Warranties', color:'#d97706', items:[
-    { key:'hp_warranty',              label:'Heat Pump Warranty', critical:true },
-    { key:'hvac_mfr_warranties',       label:'Equipment Manufacturer Warranties' },
+    { key:'hp_warranty',              label:'Equipment Manufacturer Warranty', critical:true },
     { key:'hvac_workmanship_warranty', label:'HVAC Workmanship Warranty' }
   ]},
   { key:'invoices', label:'Invoices', color:'#b45309', items:[
@@ -1181,8 +1180,9 @@ function renderDocItem(job, item) {
   html += '<div class="doc-status '+statusClass+'">'+statusIcon+'</div>';
   html += '<span class="doc-lbl'+(na?' na-lbl':'')+'">'+item.label+(item.critical&&!na?'<span class="critical-star">★</span>':'')+(item.conditional&&!na?' <span style="font-size:9px;color:#aaa;font-style:italic">Conditional</span>':'')+'</span>';
   html += '<div class="doc-act">';
-  if (!sub) html += '<button class="up-btn" onclick="triggerUpload(\''+jobId+'\',\''+item.key+'\')">&#8593; Upload</button>';
-  html += '<button class="sub-btn'+(sub?' sub-active':'')+'" onclick="toggleSubmitted(\''+jobId+'\',\''+item.key+'\')" title="Mark as submitted on CSG portal">'+(sub?'&#10003; Submitted':'Submitted')+'</button>';
+  if (!sub && !item.portalOnly) html += '<button class="up-btn" onclick="triggerUpload(\''+jobId+'\',\''+item.key+'\')">&#8593; Upload</button>';
+  var subLabel = item.portalOnly ? (sub?'&#10003; Done':'Done') : (sub?'&#10003; Submitted':'Submitted');
+  html += '<button class="sub-btn'+(sub?' sub-active':'')+'" onclick="toggleSubmitted(\''+jobId+'\',\''+item.key+'\')" title="Mark as done on CSG portal">'+subLabel+'</button>';
   html += '<button class="na-btn'+(na?' na-active':'')+'" onclick="toggleNA(\''+jobId+'\',\''+item.key+'\')">N/A</button>';
   html += '</div></div>';
   if (hasFiles) {
