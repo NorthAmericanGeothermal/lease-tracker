@@ -145,11 +145,7 @@ tr:last-child td{border-bottom:none;}
 .special-rm-btn{flex-shrink:0;padding:3px 7px;border:0.5px solid #fca5a5;border-radius:5px;background:#fff;color:#dc2626;cursor:pointer;font-size:12px;font-family:inherit;}
 /* Critical item star */
 .critical-star{color:#dc2626;font-size:9px;margin-left:2px;vertical-align:top;}
-/* COD banner in meta */
-.cod-banner{background:#fff1f2;border:0.5px solid #fca5a5;border-radius:8px;padding:9px 14px;margin:10px 16px 0;display:flex;align-items:center;gap:12px;flex-wrap:wrap;}
-.cod-banner-icon{font-size:16px;flex-shrink:0;}
-.cod-banner-label{font-size:11px;font-weight:700;color:#dc2626;white-space:nowrap;}
-.cod-banner-note{font-size:10px;color:#888;}
+/* COD date input */
 .cod-date-input{flex:1;min-width:130px;font-size:13px;padding:5px 8px;border:0.5px solid #fca5a5;border-radius:6px;background:#fff;color:#1a1a1a;font-family:inherit;}
 .cod-date-input:focus{outline:none;border-color:#dc2626;}
 .cod-date-input.cod-set{border-color:#16a34a;background:#f0fdf4;color:#15803d;font-weight:500;}
@@ -322,22 +318,23 @@ var DOC_SECTIONS = [
   { key:'hvac_qa', label:'Mechanical Completion', color:'#0891b2', items:[
     { key:'hp_nameplate_photo',       label:'Heat Pump Nameplate Photo', critical:true },
     { key:'commissioning_date_entry', label:'Commissioning Date — enter on CSG portal' },
-    { key:'monitoring_eq_installed',  label:'Monitoring Equipment Installed — confirm on portal' },
+    { key:'monitoring_eq_installed',  label:'Symphony Installed (portal: "Monitoring Equipment Installed")' },
     { key:'commissioning_report',     label:'Commissioning Report' },
     { key:'hvac_qa_package',          label:'HVAC Standard QA Package' },
     { key:'final_inspection',         label:'Final Inspection Report' },
     { key:'cert_occupancy',           label:'Certificate of Occupancy' },
     { key:'electrical_panel_photos',  label:'Electrical Panel w/ New Breakers' },
-    { key:'monitoring_info_uploaded', label:'Monitoring Info Uploaded — confirm on portal', critical:true },
+    { key:'monitoring_info_uploaded', label:'Symphony Info Uploaded (portal: "Monitoring Information")', critical:true },
     { key:'hp_warranty',              label:'Heat Pump Warranty', critical:true }
   ]},
   { key:'cod', label:'Commercial Operation', color:'#dc2626', items:[
     { key:'cod_attestation', label:'COD Attestation — checkbox on CSG portal', critical:true }
   ]},
   { key:'equipment_details', label:'Equipment Details', color:'#f59e0b', items:[
-    { key:'switch_to_final', label:'Switch to Final' }
+    { key:'switch_to_final', label:'Switch to Final — done on CSG portal' }
   ]},
   { key:'warranties', label:'Warranties', color:'#d97706', items:[
+    { key:'hvac_mfr_warranties',       label:'Equipment Manufacturer Warranties' },
     { key:'hvac_workmanship_warranty', label:'HVAC Workmanship Warranty' }
   ]},
   { key:'invoices', label:'Invoices', color:'#b45309', items:[
@@ -1030,26 +1027,23 @@ function renderCards() {
     html += '</div>';
     html += '<span class="chevron '+(isOpen?'open':'')+'">&#9662;</span></div>';
     html += '<div class="card-body '+(isOpen?'open':'')+'">';
-    // COD Banner — payment trigger, most prominent
+    // Meta section — COD banner + fields
     var codSet = !!(j.cod_date && j.cod_date.trim());
-    html += '<div class="cod-banner">';
-    html += '<span class="cod-banner-icon">&#9889;</span>';
-    html += '<span class="cod-banner-label">Commercial Operation Date ★</span>';
-    html += '<input type="text" class="cod-date-input'+(codSet?' cod-set':'')+'" placeholder="e.g. Jul 1, 2026" value="'+(j.cod_date||'').replace(/"/g,'&quot;')+'" onchange="saveCODDate(\''+j.id+'\',this)">';
-    html += '<span class="cod-banner-note">Triggers customer payment disbursement</span>';
-    html += '</div>';
-    // Meta fields
     var awlSerials = j.awl_serials || [];
-    html += '<div class="meta-section">';
-    html += '<div class="meta-field"><span class="meta-label">CSG ID</span><input type="text" class="meta-input" placeholder="e.g. 51" value="'+(j.csg_id||'')+'" onchange="saveJobField(\''+j.id+'\',\'csg_id\',this.value)"></div>';
-    html += '<div class="meta-field"><span class="meta-label">Heat Pump S/N ★</span><input type="text" class="meta-input" placeholder="HP serial #" value="'+(j.hp_serial||'').replace(/"/g,'&quot;')+'" onchange="saveJobField(\''+j.id+'\',\'hp_serial\',this.value)" style="border-color:'+(j.hp_serial?'#16a34a':'#ddd')+'"></div>';
-    html += '<div class="meta-field"><span class="meta-label">Aux Equipment S/N ★</span><input type="text" class="meta-input" placeholder="Aux serial #" value="'+(j.aux_serial||'').replace(/"/g,'&quot;')+'" onchange="saveJobField(\''+j.id+'\',\'aux_serial\',this.value)" style="border-color:'+(j.aux_serial?'#16a34a':'#ddd')+'"></div>';
-    html += '<div class="meta-field" style="flex:2"><span class="meta-label">Notes</span><input type="text" class="meta-input" placeholder="Internal notes..." value="'+(j.notes||'').replace(/"/g,'&quot;')+'" onchange="saveJobField(\''+j.id+'\',\'notes\',this.value)"></div>';
+    html += '<div class="meta-section" style="flex-direction:column;gap:10px;">';
+    // COD row — payment trigger
+    html += '<div style="display:flex;align-items:center;gap:10px;padding:8px 12px;background:#fff1f2;border:0.5px solid #fca5a5;border-radius:8px;flex-wrap:wrap;">';
+    html += '<span style="font-size:15px;">&#9889;</span>';
+    html += '<span style="font-size:11px;font-weight:700;color:#dc2626;white-space:nowrap;">Commercial Operation Date ★</span>';
+    html += '<input type="text" class="cod-date-input'+(codSet?' cod-set':'')+'" placeholder="e.g. Jul 1, 2026" value="'+(j.cod_date||'').replace(/"/g,'&quot;')+'" onchange="saveCODDate(\''+j.id+'\',this)" style="flex:1;min-width:150px;">';
+    html += '<span style="font-size:10px;color:#aaa;">Triggers payment disbursement</span>';
     html += '</div>';
-    // AWL serials row
-    html += '<div class="meta-section" style="padding-top:4px">';
-    html += '<div class="meta-field" style="flex-direction:column;align-items:flex-start;gap:3px;min-width:180px;">';
-    html += '<span class="meta-label">Symphony AWL S/N (WaterFurnace)</span>';
+    // Info row
+    html += '<div style="display:flex;gap:12px;flex-wrap:wrap;">';
+    html += '<div class="meta-field" style="min-width:80px;max-width:120px;"><span class="meta-label">CSG ID</span><input type="text" class="meta-input" placeholder="e.g. 51" value="'+(j.csg_id||'')+'" onchange="saveJobField(\''+j.id+'\',\'csg_id\',this.value)"></div>';
+    // AWL serials inline
+    html += '<div class="meta-field" style="flex-direction:column;align-items:flex-start;gap:3px;flex:1;min-width:180px;">';
+    html += '<span class="meta-label">Symphony AWL S/N</span>';
     awlSerials.forEach(function(sn, idx){
       html += '<div style="display:flex;gap:4px;width:100%;margin-top:2px">';
       html += '<input type="text" class="meta-input" placeholder="Serial #" style="flex:1;min-width:0" value="'+sn.replace(/"/g,'&quot;')+'" onchange="updateAWLSerial(\''+j.id+'\','+idx+',this.value)">';
@@ -1057,6 +1051,8 @@ function renderCards() {
       html += '</div>';
     });
     html += '<button onclick="addAWLSerial(\''+j.id+'\')" style="font-size:11px;padding:2px 8px;margin-top:4px;border:0.5px solid #16a34a;border-radius:5px;background:#fff;color:#16a34a;cursor:pointer;font-family:inherit;">+ Add S/N</button>';
+    html += '</div>';
+    html += '<div class="meta-field" style="flex:2;min-width:150px;"><span class="meta-label">Notes</span><input type="text" class="meta-input" placeholder="Internal notes..." value="'+(j.notes||'').replace(/"/g,'&quot;')+'" onchange="saveJobField(\''+j.id+'\',\'notes\',this.value)"></div>';
     html += '</div>';
     html += '</div>';
     // Download bar
@@ -1098,7 +1094,7 @@ function renderCards() {
     html += '<div class="special-section">';
     html += '<div class="special-hdr" onclick="toggleSection(\''+j.id+'\',\'__monitoring__\')">';
     html += '<div class="ds-dot" style="background:#0ea5e9"></div>';
-    html += '<span class="ds-label">Monitoring</span>';
+    html += '<span class="ds-label">Symphony <span style="font-size:10px;color:#aaa;font-weight:400">(Monitoring)</span></span>';
     if (monList.length) html += '<span class="sp-badge sp-partial" style="margin-right:6px;border-left:2px solid #0ea5e9">'+monList.length+' site'+(monList.length!==1?'s':'')+'</span>';
     html += '<span class="ds-chevron '+(monOpen?'open':'')+'">&#9662;</span>';
     html += '</div>';
@@ -1339,8 +1335,6 @@ function printChecklist() {
     html += '<div><div class="job-name">'+job.name+'</div>';
     if (job.address) html += '<div class="job-addr">'+job.address+'</div>';
     if (job.cod_date) html += '<div class="job-addr" style="color:#dc2626;font-weight:600;">⚡ COD: '+job.cod_date+'</div>';
-    if (job.hp_serial) html += '<div class="job-addr">Heat Pump S/N: <strong>'+job.hp_serial+'</strong></div>';
-    if (job.aux_serial) html += '<div class="job-addr">Aux Equipment S/N: <strong>'+job.aux_serial+'</strong></div>';
     var printSerials = job.awl_serials || [];
     printSerials.forEach(function(sn, si){
       if (sn) html += '<div class="job-addr">Symphony AWL S/N'+(printSerials.length>1?' #'+(si+1):'')+': <strong>'+sn+'</strong></div>';
@@ -1392,7 +1386,7 @@ function printChecklist() {
     var printMon = (job.monitoring_sites||[]).filter(function(s){ return s.name||s.site_id; });
     if (printMon.length) {
       html += '<div class="section-block">';
-      html += '<div class="sec-hdr">Monitoring</div>';
+      html += '<div class="sec-hdr">Symphony / Monitoring</div>';
       printMon.forEach(function(site, si){
         html += '<div class="item-row"><span class="item-lbl">';
         html += printMon.length > 1 ? '<strong>Site #'+(si+1)+'</strong>' : '<strong>Site</strong>';
