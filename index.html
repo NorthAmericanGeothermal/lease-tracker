@@ -343,8 +343,8 @@ var DOC_SECTIONS = [
     { key:'hvac_workmanship_warranty', label:'HVAC Workmanship Warranty' }
   ]},
   { key:'invoices', label:'Invoices', color:'#b45309', items:[
-    { key:'hvac_equipment_invoice',    label:'HVAC Equipment Invoice' },
-    { key:'hvac_installation_invoice', label:'HVAC Installation Invoice' }
+    { key:'hvac_equipment_invoice',    label:'HVAC Equipment Invoice',    note:'Once submitted, CSG releases your equipment reimbursement payment.' },
+    { key:'hvac_installation_invoice', label:'HVAC Installation Invoice', note:'Once submitted, CSG releases your installation payment.' }
   ]},
   { key:'other', label:'Other', color:'#64748b', items:[
     { key:'utility_bill', label:'Utility Bill' }
@@ -1190,6 +1190,9 @@ function renderDocSection(job, section) {
   if (section.key === 'cod') {
     html += '<div style="padding:6px 12px 4px;font-size:10px;color:#dc2626;background:#fff1f2;border-bottom:0.5px solid #fca5a5;">&#9889; Completing this section triggers customer payment disbursement</div>';
   }
+  if (section.key === 'invoices') {
+    html += '<div style="padding:6px 12px 4px;font-size:10px;color:#92400e;background:#fffbeb;border-bottom:0.5px solid #fde68a;">&#128176; These invoices are how NAGeo gets paid — submit both to CSG to receive reimbursement</div>';
+  }
   section.items.forEach(function(item){
     html += renderDocItem(job, item);
   });
@@ -1210,11 +1213,14 @@ function renderDocItem(job, item) {
   html += '<div class="doc-status '+statusClass+'">'+statusIcon+'</div>';
   html += '<span class="doc-lbl'+(na?' na-lbl':'')+'">'+item.label+(item.critical&&!na?'<span class="critical-star">★</span>':'')+(item.conditional&&!na?' <span style="font-size:9px;color:#aaa;font-style:italic">Conditional</span>':'')+'</span>';
   html += '<div class="doc-act">';
-  if (!sub && !item.portalOnly) html += '<button class="up-btn" onclick="triggerUpload(\''+jobId+'\',\''+item.key+'\')">&#8593; Upload</button>';
+  if (!item.portalOnly) html += '<button class="up-btn" onclick="triggerUpload(\''+jobId+'\',\''+item.key+'\')">'+(hasFiles?'&#8593; Add File':'&#8593; Upload')+'</button>';
   var subLabel = item.portalOnly ? (sub?'&#10003; Done':'Done') : (sub?'&#10003; Submitted':'Submitted');
   html += '<button class="sub-btn'+(sub?' sub-active':'')+'" onclick="toggleSubmitted(\''+jobId+'\',\''+item.key+'\')" title="Mark as done on CSG portal">'+subLabel+'</button>';
   html += '<button class="na-btn'+(na?' na-active':'')+'" onclick="toggleNA(\''+jobId+'\',\''+item.key+'\')">N/A</button>';
   html += '</div></div>';
+  if (item.note && !na) {
+    html += '<div style="padding:3px 0 0 28px;font-size:10px;color:#888;font-style:italic;">'+item.note+'</div>';
+  }
   if (hasFiles) {
     html += '<div class="doc-files">';
     files.forEach(function(f){
