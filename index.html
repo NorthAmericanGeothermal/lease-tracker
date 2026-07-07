@@ -67,11 +67,18 @@ tr:last-child td{border-bottom:none;}
 .installs{display:flex;flex-direction:column;gap:10px;}
 .card{background:#fff;border:0.5px solid #e5e5e5;border-radius:14px;overflow:hidden;transition:border-color 0.15s;}
 .card.drag-over{border:1.5px solid #16a34a;background:#f0fdf4;}.card.dragging{opacity:0.4;}
+.card.pinned{border:1.5px solid #f59e0b;background:#fffbeb;}
+.card.pinned .card-header:hover{background:#fef9c3;}
 .card-header{display:flex;align-items:center;gap:12px;padding:14px 16px;cursor:pointer;}
 .card-header:hover{background:#fafaf8;}
 .drag-handle{cursor:grab;color:#ccc;font-size:18px;padding:0 2px;flex-shrink:0;user-select:none;}
 .drag-handle:hover{color:#888;}
+.pin-badge{font-size:10px;font-weight:600;color:#92400e;background:#fde68a;border:0.5px solid #f59e0b;border-radius:5px;padding:2px 7px;white-space:nowrap;flex-shrink:0;}
+.pin-btn{font-size:11px;padding:4px 10px;border:0.5px solid #f59e0b;border-radius:6px;background:#fff;color:#92400e;cursor:pointer;font-family:inherit;}
+.pin-btn:hover{background:#fef9c3;}
+.pin-btn.pinned-active{background:#fef9c3;border-color:#d97706;}
 .avatar{width:38px;height:38px;border-radius:50%;background:#dcfce7;color:#16a34a;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:600;flex-shrink:0;}
+.avatar.pinned-avatar{background:#fde68a;color:#92400e;}
 .card-meta{flex:1;min-width:0;}
 .card-name{font-size:14px;font-weight:600;color:#1a1a1a;}
 .card-addr{font-size:12px;color:#888;margin-top:1px;}
@@ -553,6 +560,16 @@ async function addJob() {
   }
 }
 
+async function togglePin(jobId) {
+  var job = leaseJobs.find(function(j){ return j.id===jobId; });
+  if (!job) return;
+  var nowPinned = !job.is_pinned;
+  job.is_pinned = nowPinned;
+  await sb.from('lease_jobs').update({is_pinned:nowPinned,updated_at:new Date().toISOString()}).eq('id',jobId);
+  await logActivity(jobId, nowPinned ? 'Pinned job to top (guide/reference)' : 'Unpinned job');
+  render();
+}
+
 async function saveCODDate(jobId, inputEl) {
   var value = inputEl.value.trim();
   inputEl.classList.toggle('cod-set', !!value);
@@ -1005,17 +1022,28 @@ function renderOverview() {
 function renderCards() {
   var el = document.getElementById('view-cards');
   if (!leaseJobs.length) { el.innerHTML='<div class="empty">No lease jobs yet.</div>'; return; }
+  // Pinned jobs always first, then rest in sort_order
+  var sorted = leaseJobs.slice().sort(function(a,b){
+    if (!!a.is_pinned === !!b.is_pinned) return 0;
+    return a.is_pinned ? -1 : 1;
+  });
   var html = '<div class="installs">';
-  leaseJobs.forEach(function(j){
+  sorted.forEach(function(j){
+    var isPinned = !!j.is_pinned;
     var isOpen = openCards.has(j.id);
     var delOpen = showDel.has(j.id);
     var p = getJobProgress(j.id);
     var pillClass = p.isComplete ? 'pill-done' : p.hasAny ? 'pill-prog' : 'pill-missing';
-    html += '<div class="card" id="card-'+j.id+'" ondragover="dragOver(event,\''+j.id+'\')" ondrop="drop(event,\''+j.id+'\')">';
+    html += '<div class="card'+(isPinned?' pinned':'')+'" id="card-'+j.id+'"'+(isPinned?'':' ondragover="dragOver(event,\''+j.id+'\')" ondrop="drop(event,\''+j.id+'\')"')+' >';
     html += '<div class="card-header" onclick="toggleCard(\''+j.id+'\')">';
-    html += '<span class="drag-handle" draggable="true" ondragstart="dragStart(event,\''+j.id+'\')" ondragend="dragEnd(event)" onclick="event.stopPropagation()">&#8942;</span>';
-    html += '<div class="avatar">'+initials(j.name)+'</div>';
-    html += '<div class="card-meta"><div class="card-name">'+j.name+'</div>';
+    // No drag handle on pinned cards
+    if (isPinned) {
+      html += '<span style="font-size:16px;flex-shrink:0;padding:0 4px;">&#128204;</span>';
+    } else {
+      html += '<span class="drag-handle" draggable="true" ondragstart="dragStart(event,\''+j.id+'\')" ondragend="dragEnd(event)" onclick="event.stopPropagation()">&#8942;</span>';
+    }
+    html += '<div class="avatar'+(isPinned?' pinned-avatar':'')+'">'+initials(j.name)+'</div>';
+    html += '<div class="card-meta"><div class="card-name">'+j.name+(isPinned?' <span class="pin-badge">&#128204; Reference Guide</span>':'')+'</div>';
     if (j.address) html += '<div class="card-addr">'+j.address+'</div>';
     if (j.csg_id) html += '<div class="card-csg">CSG ID: '+j.csg_id+'</div>';
     if (j.cod_date) html += '<div class="card-csg" style="color:#16a34a;font-weight:600;">&#9889; COD: '+j.cod_date+'</div>';
@@ -1120,6 +1148,8 @@ function renderCards() {
     }
     // Delete zone
     html += '<div class="delete-zone">';
+    // Pin toggle
+    html += '<button class="pin-btn'+(isPinned?' pinned-active':'')+'" onclick="togglePin(\''+j.id+'\')" title="'+(isPinned?'Unpin — allow sorting':'Pin to top as reference guide')+'">'+(isPinned?'&#128204; Pinned (Reference Guide)':'&#128204; Pin as Guide')+'</button>';
     if (!delOpen) {
       html += '<button class="delete-btn" onclick="showDeleteConfirm(\''+j.id+'\')">&#128465; Delete job</button>';
     } else {
