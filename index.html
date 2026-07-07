@@ -745,6 +745,10 @@ async function toggleSubmitted(jobId, catKey) {
 }
 
 /* ── AWL SERIALS ────────────────────────────────────────── */
+function normalizeAWL(entries) {
+  // Migrate old plain-string format to {serial, note} objects
+  return (entries||[]).map(function(e){ return typeof e==='string' ? {serial:e,note:''} : e; });
+}
 async function saveAWLSerials(jobId, serials) {
   var job = leaseJobs.find(function(j){ return j.id===jobId; });
   if (!job) return;
@@ -754,25 +758,26 @@ async function saveAWLSerials(jobId, serials) {
 async function addAWLSerial(jobId) {
   var job = leaseJobs.find(function(j){ return j.id===jobId; });
   if (!job) return;
-  var serials = (job.awl_serials||[]).slice();
-  serials.push('');
+  var serials = normalizeAWL(job.awl_serials);
+  serials.push({serial:'',note:''});
   await saveAWLSerials(jobId, serials);
   render();
 }
 async function removeAWLSerial(jobId, idx) {
   var job = leaseJobs.find(function(j){ return j.id===jobId; });
   if (!job) return;
-  var serials = (job.awl_serials||[]).slice();
+  var serials = normalizeAWL(job.awl_serials);
   var removed = serials.splice(idx, 1)[0];
   await saveAWLSerials(jobId, serials);
-  if (removed) await logActivity(jobId, 'Removed AWL serial: '+removed);
+  if (removed && removed.serial) await logActivity(jobId, 'Removed AWL serial: '+removed.serial);
   render();
 }
-async function updateAWLSerial(jobId, idx, value) {
+async function updateAWLSerial(jobId, idx, field, value) {
   var job = leaseJobs.find(function(j){ return j.id===jobId; });
   if (!job) return;
-  var serials = (job.awl_serials||[]).slice();
-  serials[idx] = value;
+  var serials = normalizeAWL(job.awl_serials);
+  if (!serials[idx]) serials[idx] = {serial:'',note:''};
+  serials[idx][field] = value;
   await saveAWLSerials(jobId, serials);
 }
 
@@ -821,7 +826,7 @@ async function addMonitoringSite(jobId) {
   var job = leaseJobs.find(function(j){ return j.id===jobId; });
   if (!job) return;
   var sites = (job.monitoring_sites||[]).slice();
-  sites.push({name:'',site_id:''});
+  sites.push({name:'',username:'',password:'',notes:''});
   await saveMonitoringSites(jobId, sites);
   if (!openSections[jobId]) openSections[jobId] = new Set();
   openSections[jobId].add('__monitoring__');
@@ -839,7 +844,7 @@ async function updateMonitoringSite(jobId, idx, field, value) {
   var job = leaseJobs.find(function(j){ return j.id===jobId; });
   if (!job) return;
   var sites = (job.monitoring_sites||[]).slice();
-  if (!sites[idx]) sites[idx] = {name:'',site_id:''};
+  if (!sites[idx]) sites[idx] = {name:'',username:'',password:'',notes:''};
   sites[idx][field] = value;
   await saveMonitoringSites(jobId, sites);
 }
@@ -1068,11 +1073,13 @@ function renderCards() {
     html += '<div style="display:flex;gap:12px;flex-wrap:wrap;">';
     html += '<div class="meta-field" style="min-width:80px;max-width:120px;"><span class="meta-label">CSG ID</span><input type="text" class="meta-input" placeholder="e.g. 51" value="'+(j.csg_id||'')+'" onchange="saveJobField(\''+j.id+'\',\'csg_id\',this.value)"></div>';
     // AWL serials inline
-    html += '<div class="meta-field" style="flex-direction:column;align-items:flex-start;gap:3px;flex:1;min-width:180px;">';
+    var awlNorm = normalizeAWL(awlSerials);
+    html += '<div class="meta-field" style="flex-direction:column;align-items:flex-start;gap:3px;flex:1;min-width:220px;">';
     html += '<span class="meta-label">Symphony AWL S/N</span>';
-    awlSerials.forEach(function(sn, idx){
+    awlNorm.forEach(function(entry, idx){
       html += '<div style="display:flex;gap:4px;width:100%;margin-top:2px">';
-      html += '<input type="text" class="meta-input" placeholder="Serial #" style="flex:1;min-width:0" value="'+sn.replace(/"/g,'&quot;')+'" onchange="updateAWLSerial(\''+j.id+'\','+idx+',this.value)">';
+      html += '<input type="text" class="meta-input" placeholder="Serial #" style="flex:1;min-width:80px" value="'+entry.serial.replace(/"/g,'&quot;')+'" onchange="updateAWLSerial(\''+j.id+'\','+idx+',\'serial\',this.value)">';
+      html += '<input type="text" class="meta-input" placeholder="Note (e.g. Main Floor)" style="flex:1.4;min-width:100px" value="'+(entry.note||'').replace(/"/g,'&quot;')+'" onchange="updateAWLSerial(\''+j.id+'\','+idx+',\'note\',this.value)">';
       html += '<button onclick="removeAWLSerial(\''+j.id+'\','+idx+')" style="flex-shrink:0;padding:3px 7px;border:0.5px solid #fca5a5;border-radius:5px;background:#fff;color:#dc2626;cursor:pointer;font-size:12px;font-family:inherit;">&#10005;</button>';
       html += '</div>';
     });
@@ -1125,11 +1132,21 @@ function renderCards() {
     html += '<span class="ds-chevron '+(monOpen?'open':'')+'">&#9662;</span>';
     html += '</div>';
     html += '<div class="ds-body '+(monOpen?'open':'')+'" style="padding:10px 12px;">';
+    html += '<div style="font-size:10px;color:#aaa;margin-bottom:8px;">Portal login credentials for the Symphony monitoring site. CSG may set this up on their end — fill in if you have it.</div>';
     monList.forEach(function(site, idx){
-      html += '<div class="special-row">';
-      html += '<input type="text" class="meta-input" placeholder="Site Name" style="flex:1;min-width:120px" value="'+(site.name||'').replace(/"/g,'&quot;')+'" onchange="updateMonitoringSite(\''+j.id+'\','+idx+',\'name\',this.value)">';
-      html += '<input type="text" class="meta-input" placeholder="Site ID" style="flex:1;min-width:100px" value="'+(site.site_id||'').replace(/"/g,'&quot;')+'" onchange="updateMonitoringSite(\''+j.id+'\','+idx+',\'site_id\',this.value)">';
+      html += '<div style="border:0.5px solid #e5e5e5;border-radius:8px;padding:8px 10px;margin-bottom:8px;background:#fafaf8;">';
+      // Row 1: Site name + remove
+      html += '<div style="display:flex;gap:6px;align-items:center;margin-bottom:6px;">';
+      html += '<input type="text" class="meta-input" placeholder="Site Name" style="flex:1;" value="'+(site.name||'').replace(/"/g,'&quot;')+'" onchange="updateMonitoringSite(\''+j.id+'\','+idx+',\'name\',this.value)">';
       html += '<button class="special-rm-btn" onclick="removeMonitoringSite(\''+j.id+'\','+idx+')">&#10005;</button>';
+      html += '</div>';
+      // Row 2: Username + Password
+      html += '<div style="display:flex;gap:6px;margin-bottom:6px;">';
+      html += '<input type="text" class="meta-input" placeholder="Username / Login" style="flex:1;" value="'+(site.username||'').replace(/"/g,'&quot;')+'" onchange="updateMonitoringSite(\''+j.id+'\','+idx+',\'username\',this.value)">';
+      html += '<input type="text" class="meta-input" placeholder="Password" style="flex:1;" value="'+(site.password||'').replace(/"/g,'&quot;')+'" onchange="updateMonitoringSite(\''+j.id+'\','+idx+',\'password\',this.value)">';
+      html += '</div>';
+      // Row 3: Notes
+      html += '<input type="text" class="meta-input" placeholder="Notes (optional)" style="width:100%;" value="'+(site.notes||'').replace(/"/g,'&quot;')+'" onchange="updateMonitoringSite(\''+j.id+'\','+idx+',\'notes\',this.value)">';
       html += '</div>';
     });
     html += '<button class="special-add-btn" onclick="addMonitoringSite(\''+j.id+'\')">+ Add Site</button>';
@@ -1370,9 +1387,12 @@ function printChecklist() {
     html += '<div><div class="job-name">'+job.name+'</div>';
     if (job.address) html += '<div class="job-addr">'+job.address+'</div>';
     if (job.cod_date) html += '<div class="job-addr" style="color:#dc2626;font-weight:600;">⚡ COD: '+job.cod_date+'</div>';
-    var printSerials = job.awl_serials || [];
-    printSerials.forEach(function(sn, si){
-      if (sn) html += '<div class="job-addr">Symphony AWL S/N'+(printSerials.length>1?' #'+(si+1):'')+': <strong>'+sn+'</strong></div>';
+    var printSerials = normalizeAWL(job.awl_serials || []);
+    printSerials.forEach(function(entry, si){
+      if (entry.serial) {
+        var label = 'Symphony AWL S/N'+(printSerials.length>1?' #'+(si+1):'');
+        html += '<div class="job-addr">'+label+': <strong>'+entry.serial+'</strong>'+(entry.note?' <span style="color:#888">('+entry.note+')</span>':'')+'</div>';
+      }
     });
     html += '</div>';
     html += '<div class="job-meta">';
@@ -1418,15 +1438,16 @@ function printChecklist() {
       html += '</div>';
     }
     // Monitoring on print
-    var printMon = (job.monitoring_sites||[]).filter(function(s){ return s.name||s.site_id; });
+    var printMon = (job.monitoring_sites||[]).filter(function(s){ return s.name||s.username||s.password; });
     if (printMon.length) {
       html += '<div class="section-block">';
       html += '<div class="sec-hdr">Symphony / Monitoring</div>';
       printMon.forEach(function(site, si){
         html += '<div class="item-row"><span class="item-lbl">';
-        html += printMon.length > 1 ? '<strong>Site #'+(si+1)+'</strong>' : '<strong>Site</strong>';
-        if (site.name)    html += ' &mdash; Name: '+site.name;
-        if (site.site_id) html += ' &mdash; ID: '+site.site_id;
+        html += printMon.length > 1 ? '<strong>Site #'+(si+1)+(site.name?' — '+site.name:'')+'</strong>' : '<strong>'+(site.name||'Site')+'</strong>';
+        if (site.username) html += ' &mdash; Login: '+site.username;
+        if (site.password) html += ' &mdash; Password: '+site.password;
+        if (site.notes)    html += ' &mdash; '+site.notes;
         html += '</span></div>';
       });
       html += '</div>';
