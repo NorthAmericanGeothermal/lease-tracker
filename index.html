@@ -1230,7 +1230,9 @@ function renderDocItem(job, item) {
   html += '<div class="doc-status '+statusClass+'">'+statusIcon+'</div>';
   html += '<span class="doc-lbl'+(na?' na-lbl':'')+'">'+item.label+(item.critical&&!na?'<span class="critical-star">★</span>':'')+(item.conditional&&!na?' <span style="font-size:9px;color:#aaa;font-style:italic">Conditional</span>':'')+'</span>';
   html += '<div class="doc-act">';
-  if (!item.portalOnly) html += '<button class="up-btn" onclick="triggerUpload(\''+jobId+'\',\''+item.key+'\')">'+(hasFiles?'&#8593; Add File':'&#8593; Upload')+'</button>';
+  // Pinned reference jobs can upload a how-to PDF on any item, including portal-only ones
+  var showUpload = !item.portalOnly || job.is_pinned;
+  if (showUpload) html += '<button class="up-btn" onclick="triggerUpload(\''+jobId+'\',\''+item.key+'\')" '+(item.portalOnly&&job.is_pinned?'title="Upload a how-to PDF for this step (reference guide only)" style="border-color:#f59e0b;color:#92400e;"':'')+'>'+(hasFiles?'&#8593; Add File':'&#8593; Upload')+'</button>';
   var subLabel = item.portalOnly ? (sub?'&#10003; Done':'Done') : (sub?'&#10003; Submitted':'Submitted');
   html += '<button class="sub-btn'+(sub?' sub-active':'')+'" onclick="toggleSubmitted(\''+jobId+'\',\''+item.key+'\')" title="Mark as done on CSG portal">'+subLabel+'</button>';
   html += '<button class="na-btn'+(na?' na-active':'')+'" onclick="toggleNA(\''+jobId+'\',\''+item.key+'\')">N/A</button>';
